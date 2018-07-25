@@ -107,9 +107,10 @@ S(document).ready(function(){
 			// If we have a few floats in with our integers, we change the format to float
 			if(format[j] == "integer" && count['float'] > 0.1*newdata.length) format[j] = "float";
 
-			req.push(empty == 0);
+			req.push(header[j] ? true : false);
 
 		}
+		
 
 		// Return the structured data
 		return { 'fields': {'name':header,'title':clone(header),'format':format,'required':req }, 'rows': newdata };
@@ -149,7 +150,8 @@ S(document).ready(function(){
 	// Main function
 	function Converter(file){
 
-		this.maxrows = 10;	// Limit on the number of rows to display
+		this.maxrows = 10000;	// Limit on the number of rows to display
+		this.maxrowstable = 5;	// Limit on the number of rows to display
 		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
 		
 		// The supported data types as specified in http://csvlint.io/about
@@ -229,15 +231,9 @@ S(document).ready(function(){
 
 	Converter.prototype.buildMap = function(){
 
-		var mapel = S('#map');
 		var lat = 53.79659;
 		var lon = -1.53385;
 		var d = 0.003;
-		var mapid = mapel.attr('id');
-		var map = L.map(mapid,{'scrollWheelZoom':false}).fitBounds([
-			[lat-d, lon-d],
-			[lat+d, lon+d]
-		]);
 
 		function makeMarker(colour){
 			return L.divIcon({
@@ -251,17 +247,133 @@ S(document).ready(function(){
 			});
 		}
 
-		var marker = L.marker([lat, lon],{icon: makeMarker('#E6007C')}).addTo(map);
+		if(!this.map){
+			var mapel = S('#map');
+			var mapid = mapel.attr('id');
+			this.map = L.map(mapid,{'scrollWheelZoom':false}).fitBounds([
+				[lat-d, lon-d],
+				[lat+d, lon+d]
+			]);
+			// CartoDB map
+			L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+				attribution: 'Tiles: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+				subdomains: 'abcd',
+				maxZoom: 19
+			}).addTo(this.map);
+		}
 
-		// CartoDB map
-		L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
-			attribution: 'Tiles: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
-			subdomains: 'abcd',
-			maxZoom: 19
-		}).addTo(map);
+		function popuptext(feature){
+			// does this feature have a property named popupContent?
+			popup = '';
+			if(feature.properties){
+				// If this feature has a default popup
+				// Convert "other_tags" e.g "\"ele:msl\"=>\"105.8\",\"ele:source\"=>\"GPS\",\"material\"=>\"stone\""
+				if(feature.properties.other_tags){
+					tags = feature.properties.other_tags.split(/,/);
+					for(var t = 0; t < tags.length; t++){
+						tags[t] = tags[t].replace(/\"/g,"");
+						bits = tags[t].split(/\=\>/);
+						if(bits.length == 2){
+							if(!feature.properties[bits[0]]) feature.properties[bits[0]] = bits[1];
+						}
+					}
+				}
+				if(feature.properties.popup){
+					popup = feature.properties.popup.replace(/\n/g,"<br />");
+				}else{
+					title = '';
+					if(feature.properties.title || feature.properties.name || feature.properties.Name) title = (feature.properties.title || feature.properties.name || feature.properties.Name);
+					//if(!title) title = "Unknown name";
+					if(title) popup += '<h3>'+(title)+'</h3>';
+					var added = 0;
+					for(var f in feature.properties){
+						if(f != "Name" && f!="name" && f!="title" && f!="other_tags" && (typeof feature.properties[f]==="number" || (typeof feature.properties[f]==="string" && feature.properties[f].length > 0))){
+							popup += (added > 0 ? '<br />':'')+'<strong>'+f+':</strong> '+(typeof feature.properties[f]==="string" && feature.properties[f].indexOf("http")==0 ? '<a href="'+feature.properties[f]+'" target="_blank">'+feature.properties[f]+'</a>' : feature.properties[f])+'';
+							added++;
+						}
+					}
+				}
+				// Loop over properties and replace anything
+				for(p in feature.properties){
+					while(popup.indexOf("%"+p+"%") >= 0){
+						popup = popup.replace("%"+p+"%",feature.properties[p] || "?");
+					}
+				}
+				popup = popup.replace(/%type%/g,feature.geometry.type.toLowerCase());
+				// Replace any remaining unescaped parts
+				popup = popup.replace(/%[^\%]+%/g,"?");
+			}
+			return popup;
+		}
+		function onEachFeature(feature, layer) {
+			popup = popuptext(feature);
+			if(popup) layer.bindPopup(popup);
+		}
+		var customicon = makeMarker('#FF6700');
+		var geoattrs = {
+			'style': { "color": '#E6007C', "weight": 2, "opacity": 0.65 },
+			'pointToLayer': function(geoJsonPoint, latlng) { return L.marker(latlng,{icon: customicon}); },
+			'onEachFeature': onEachFeature
+		};
+		
 
-		var a = 'ODI Leeds,<br />3rd Floor,<br />Munro House,<br />Duke Street,<br />Leeds LS9 8AG'
-		marker.bindPopup(a).openPopup();
+		var geojson = {
+			"type": "FeatureCollection",
+			"features": []
+		}
+
+		geojson.features = new Array();
+		var x = -1;
+		var y = -1;
+
+
+		for(var c = 0; c < this.data.fields.title.length; c++){
+			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
+
+			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
+			
+		}
+
+		if(x >= 0 && y >= 0){
+			for(var i = 0; i < this.data.rows.length; i++){
+				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": [ parseFloat(parseFloat(this.data.rows[i][x]).toFixed(6)), parseFloat(parseFloat(this.data.rows[i][y]).toFixed(6)) ] }};
+				for(var c = 0; c < this.data.rows[i].length; c++){
+					var n = this.data.fields.title[c];
+					if(this.data.fields.required[c]==true){
+						feature.properties[n] = this.data.rows[i][c];
+					}
+				}
+				geojson.features.push(feature);
+			}
+		}
+
+		if(this.map){
+			if(this.layer) this.map.removeLayer(this.layer);
+
+			this.layer = L.geoJSON(geojson,geoattrs);
+			this.layer.addTo(this.map);
+			this.map.fitBounds(this.layer.getBounds());
+		}
+		
+		txt = JSON.stringify(geojson);
+		
+		S('#geojson textarea').html(txt);
+
+		function niceSize(b){
+			if(b > 1e12) return (b/1e12).toFixed(2)+" TB";
+			if(b > 1e9) return (b/1e9).toFixed(2)+" GB";
+			if(b > 1e6) return (b/1e6).toFixed(2)+" MB";
+			if(b > 1e3) return (b/1e3).toFixed(2)+" kB";
+			return (b)+" bytes";
+		}
+
+
+		S('#filesize').html('<p>File size: '+niceSize(txt.length)+'</p>');
+
 
 		return this;
 	}
@@ -273,11 +385,9 @@ S(document).ready(function(){
 		// Create the data table
 		var table = "";
 		var mx = Math.min(this.data.rows.length,this.maxrows);
-		if(mx == this.maxrows){
-			table += '<p>We only processed the <em>first '+this.maxrows+" records</em> so that we don't crash your browser.</p>";
-		}else{
-			table += "<p>We loaded <em>"+this.records+" records</em>.</p>";
-		}
+		mx = Math.min(mx,this.maxrowstable);
+		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+").</p>";
+		
 		table += "<div class=\"table-holder\"><table>";
 		table += '<tr><th>Title:</th>';
 
@@ -294,7 +404,7 @@ S(document).ready(function(){
 
 		table += '<tr><th>Keep?</th>';
 		for(var c in this.data.fields.name){
-			table += '<th class="constraint"><label></label>'+this.buildTrueFalse(this.data.fields.title[c]!="","required",c)+'<!--<button class="delete" title="Remove this constraint from this column">&times;</button><button class="add" title="Add a constraint to this column">&plus;</button>--></th>';
+			table += '<th class="constraint"><label></label>'+this.buildTrueFalse(this.data.fields.required[c],"required",c)+'<!--<button class="delete" title="Remove this constraint from this column">&times;</button><button class="add" title="Add a constraint to this column">&plus;</button>--></th>';
 		}
 		table += '</tr>';
 
@@ -322,15 +432,16 @@ S(document).ready(function(){
 
 	// Process a form element and update the data structure
 	Converter.prototype.update = function(id,value){
+
 		var el = S('#'+id);
 		var row = el.attr('data-row');
 		var col = el.attr('data-col');
 		if(row == "title") this.data.fields.title[col] = value;
 		if(row == "format") this.data.fields.format[col] = value;
-		if(row == "required") this.data.fields.required[col] = value;
+		if(row == "required") this.data.fields.required[col] = (value.toLowerCase() == "true" ? true : false);
 
 		// Go through form elements and update the format/constraints
-		this.buildSchema();
+		this.buildMap();
 
 		return this;
 	}
@@ -373,7 +484,7 @@ S(document).ready(function(){
 
 		var textFileAsBlob = new Blob([this.json], {type:'text/plain'});
 		if(!this.file) this.file = "schema.json";
-		var fileNameToSaveAs = this.file.substring(0,this.file.lastIndexOf("."))+".json";
+		var fileNameToSaveAs = this.file.substring(0,this.file.lastIndexOf("."))+".geojson";
 
 		function destroyClickedElement(event){ document.body.removeChild(event.target); }
 
@@ -425,7 +536,7 @@ S(document).ready(function(){
 
 				this.file = f.name;
 				// ('+ (f.type || 'n/a')+ ')
-				output += '<div><strong>'+ escape(f.name)+ '</strong> - ' + niceSize(f.size) + ', last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
+				output += '<div><strong>'+ (f.name)+ '</strong> - ' + niceSize(f.size) + ', last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
 
 				// DEPRECATED as not reliable // Only process csv files.
 				//if(!f.type.match('text/csv')) continue;

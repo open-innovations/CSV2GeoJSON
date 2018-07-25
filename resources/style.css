@@ -174,7 +174,6 @@ figcaption {
 }
 #main > .holder { padding: 2em 1em; }
 #main p, #main iframe, #main h2, #main h3, #main figcaption, #main ul, #main ol, .block { margin-bottom: 16px; }
-#main p:last-child, #main figure iframe { margin-bottom: 0; }
 #main ul { list-style: disc; }
 #main ol { list-style: numerical; }
 #main ul, #main ol { margin-left: 2em; }

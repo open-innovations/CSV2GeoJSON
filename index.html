@@ -15,11 +15,12 @@
 	<meta name="twitter:image" property="og:image" content="https://odileeds.org/resources/images/odileeds.png">
 	<style>
 	#map { 
-		height: 500px;
+		height: 600px;
 		display: block;
 		width: 100%;
 	}
-	textarea, #map, td, th {
+	.leaflet-popup-content h3 { margin-top: 0px; }
+	textarea, #map, td, th, table {
 		border: 1px solid #cccccc;
 	}
 	.dropzone {
@@ -169,13 +170,14 @@
 				<output id="list"></output>
 
 				<h2 class="step2">2. Check the auto-detection of geography</h2>
-				<p>We make a guess at the columns that contain the geography. We'll look for "Latitude" and "Longitude" and if they don't exist we'll look for "lat/lon", "GeoX/GeoY", "Easting/Northing" pairs. If we've guessed wrongly, you can manually change the columns.</p>
+				<p>We make a guess at the columns that contain the geography. We'll look for "Latitude" and "Longitude" and if they don't exist we'll look for "lat/lon" or "GeoX/GeoY" pairs. They should be in WGS84 coordinates. If we've guessed wrongly, you can manually change the columns.</p>
 				<output id="contents"></output>
 				
 
 				<h2 class="step3">3. Save the GeoJSON file</h2>
 				<output id="geojson">
 					<textarea></textarea>
+					<div id="filesize"></div>
 				</output>
 				<p><button type="button" id="save" class="seasonal">Save as GeoJSON</button> or copy and paste the output into a file with a .geojson extension.</p>
 
