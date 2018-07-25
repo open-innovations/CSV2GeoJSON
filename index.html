@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width" />
+	<title>CSV to GeoJSON converter</title>
+	<link rel="StyleSheet" href="resources/style.css" type="text/css" />
+	<link rel="StyleSheet" href="resources/leaflet.css" type="text/css" />
+	<link href="favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:site" content="@ODILeeds">
+	<meta name="twitter:url" property="og:url" content="https://odileeds.github.io/CSV2GeoJSON/">
+	<meta name="twitter:title" property="og:title" content="CSV to GeoJSON converter">
+	<meta name="twitter:description" property="og:description" content="Convert a CSV file with simple geography into a GeoJSON point file">
+	<meta name="twitter:image" property="og:image" content="https://odileeds.org/resources/images/odileeds.png">
+	<style>
+	#map { 
+		height: 500px;
+		display: block;
+		width: 100%;
+	}
+	textarea, #map, td, th {
+		border: 1px solid #cccccc;
+	}
+	.dropzone {
+		border: 2px dashed #999999;
+		border-radius: 5px;
+		color: #333333;
+		padding: 25px;
+		text-align: center;
+		position: relative;
+	}
+	.dropzone.loaded {
+		border: 2px solid #333333;
+		color: #333333;
+	}
+	.dropzone.loaded .helpertext {
+		display: none;
+	}
+	.dropzone.drop {
+		background-color: #ddd;
+	}
+	.dropzone input {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+	}
+	.glory .holder, .glory-opacity {
+		height: auto;
+	}
+	.table-holder {
+		overflow-x: auto;
+		width: 100%;
+	}
+	#schema textarea, #schema_file { margin-bottom: 16px; }
+	h2, h3 { margin-top: 48px; }
+	table {
+		border-collapse: collapse;
+	}
+	table th, table .rownum {
+		background-color: #ccc;
+		color: black;
+		text-align: center;
+		font-weight: 700;
+	}
+	table td {
+		color: black;
+	}
+	table td, table th {
+		padding: 4px;
+		border: 1px solid #ccc;
+		border-right: 1px solid #aaa;
+		min-width: 150px;
+	}
+	table td:first-child, table th:first-child {
+		min-width: auto;
+		text-align: center;
+	}
+	.block {
+		min-height: auto;
+	}
+	input, select {
+		font-size: 1em;
+		width: 100%;
+	}
+	td.number, th.number {
+		text-align: center;
+	}
+	textarea {
+		width: 100%;
+		min-height: 10em;
+		padding: 6px;
+	}
+	table .constraint label { width: auto; display: inline-block; }
+	table .constraint select { width: auto; display: inline-block; }
+	table button {
+		padding: 2px 4px;
+		margin-left: 2px;
+	}
+	#main .seasonal .holder { position: relative; }
+	.label {
+		display: block;
+		position: absolute;
+		top: -4px;
+		right: 0em;
+		font-size: 0.75em;
+		font-weight: bold;
+		background-color: black;
+		padding: 4px 8px 2px 8px;
+		border-radius: 0.25em;
+		vertical-align: baseline;
+		white-space: nowrap; 
+		color: white;
+	}
+	#validate {
+		display: none;
+	}
+	.checked:before {
+		content: "✓";
+		color: #1dd3a7;
+		font-size: 2em;
+		left: -0.5em;
+		position: absolute;
+	}
+	</style>
+	<script type="text/javascript" src="resources/stuquery.js"></script>
+	<script type="text/javascript" src="resources/csv2geojson.js"></script>
+	<script type="text/javascript" src="resources/leaflet.js"></script>
+</head>
+<body>
+	<header class="b1-bg">
+		<div class="b1-bg glory">
+			<div class="glory-opacity">
+				<div class="holder">
+					<a href="http://odileeds.org/"><img alt="ODI Leeds" src="resources/odileeds.svg" title="ODI Leeds"></a>
+				</div>
+			</div>
+		</div>
+	</header>
+
+	<div id="main">
+		<div class="seasonal">
+			<div class="holder">
+				<h1>CSV to GeoJSON converter</h1><span class="label">ALPHA</span>
+			</div>
+		</div>
+
+		<div class="holder">
+			<form id="validation_form" method="post" enctype="multipart/form-data" action="http://csvlint.io/package" accept-charset="UTF-8">
+				<input id="no_js" type="hidden" name="no_js" value="1" />
+				<input type="hidden" value="✓" name="utf8">
+				<input type="hidden" name="urls[]" value="" />
+				<input type="hidden" name="urls[]" value="" />
+				<input type="hidden" name="files[]" value="" />
+
+				<p>Generate a GeoJSON file from a CSV file in three easy steps. The CSV file will need to contain two columns that contain the coordinates.</p>
+
+				<h2 class="step1">1. Select a CSV file</h2>
+				<p>Add your CSV file (we'll work with it within your browser; it won't get uploaded anywhere).</p>
+				<div id="drop_zone" class="dropzone block">
+					<div class="helpertext">
+						Drop CSV file here (or click to browse files)<br />
+						<input id="standard_files" class="fileselect" type="file" title="browse" name="files[]" multiple="multiple" accept=".csv, .tsv, .txt, .zip">
+					</div>
+				</div>
+				<output id="list"></output>
+
+				<h2 class="step2">2. Check the auto-detection of geography</h2>
+				<p>We make a guess at the columns that contain the geography. We'll look for "Latitude" and "Longitude" and if they don't exist we'll look for "lat/lon", "GeoX/GeoY", "Easting/Northing" pairs. If we've guessed wrongly, you can manually change the columns.</p>
+				<output id="contents"></output>
+				
+
+				<h2 class="step3">3. Save the GeoJSON file</h2>
+				<output id="geojson">
+					<textarea></textarea>
+				</output>
+				<p><button type="button" id="save" class="seasonal">Save as GeoJSON</button> or copy and paste the output into a file with a .geojson extension.</p>
+
+			</form>
+		</div>
+	</div>
+
+	<footer class="b1-bg">
+		<div class="holder">
+				Created by Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2018
+		</div>
+	</footer>
+</body>
+</html>
