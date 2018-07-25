@@ -150,7 +150,7 @@ S(document).ready(function(){
 	// Main function
 	function Converter(file){
 
-		this.maxrows = 10000;	// Limit on the number of rows to display
+		this.maxrows = 100000;	// Limit on the number of rows to display
 		this.maxrowstable = 5;	// Limit on the number of rows to display
 		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
 		
@@ -315,7 +315,6 @@ S(document).ready(function(){
 			'pointToLayer': function(geoJsonPoint, latlng) { return L.marker(latlng,{icon: customicon}); },
 			'onEachFeature': onEachFeature
 		};
-		
 
 		var geojson = {
 			"type": "FeatureCollection",
@@ -327,6 +326,7 @@ S(document).ready(function(){
 		var y = -1;
 
 
+		var convertfromosgb = false;
 		for(var c = 0; c < this.data.fields.title.length; c++){
 			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
@@ -340,7 +340,19 @@ S(document).ready(function(){
 
 		if(x >= 0 && y >= 0){
 			for(var i = 0; i < this.data.rows.length; i++){
-				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": [ parseFloat(parseFloat(this.data.rows[i][x]).toFixed(6)), parseFloat(parseFloat(this.data.rows[i][y]).toFixed(6)) ] }};
+				lat = this.data.rows[i][y];
+				lon = this.data.rows[i][x];
+				for(var c = 0; c < this.data.fields.title.length; c++){
+					if(this.data.fields.title[c] == "CoordinateReferenceSystem"){
+						if(typeof this.data.rows[i][c]==="string" && this.data.rows[i][c].toLowerCase() == "osgb36"){
+							ll = NEtoLL([lat,lon]);
+							lat = ll[0];
+							lon = ll[1];
+						}
+					}
+				}
+
+				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": [ parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6)) ] }};
 				for(var c = 0; c < this.data.rows[i].length; c++){
 					var n = this.data.fields.title[c];
 					if(this.data.fields.required[c]==true){
@@ -519,14 +531,6 @@ S(document).ready(function(){
 		if(evt.dataTransfer && evt.dataTransfer.files) files = evt.dataTransfer.files; // FileList object.
 		if(!files && evt.target && evt.target.files) files = evt.target.files;
 
-		function niceSize(b){
-			if(b > 1e12) return (b/1e12).toFixed(2)+" TB";
-			if(b > 1e9) return (b/1e9).toFixed(2)+" GB";
-			if(b > 1e6) return (b/1e6).toFixed(2)+" MB";
-			if(b > 1e3) return (b/1e3).toFixed(2)+" kB";
-			return (b)+" bytes";
-		}
-
 		if(typ == "csv"){
 
 			// files is a FileList of File objects. List some properties.
@@ -584,6 +588,79 @@ S(document).ready(function(){
 
 		return false;
 	}
+
+
+
+// adapted from http://www.dorcus.co.uk/carabus/ngr_ll.html
+
+	function NEtoLL(coo) {
+		var east = coo[0];
+		var north = coo[1];
+		// converts NGR easting and nothing to lat, lon.
+		// input metres, output radians
+		var nX = Number(north);
+		var eX = Number(east);
+		a = 6377563.396; // OSGB semi-major
+		b = 6356256.91; // OSGB semi-minor
+		e0 = 400000; // OSGB easting of false origin
+		n0 = -100000; // OSGB northing of false origin
+		f0 = 0.9996012717; // OSGB scale factor on central meridian
+		e2 = 0.0066705397616; // OSGB eccentricity squared
+		lam0 = -0.034906585039886591; // OSGB false east
+		phi0 = 0.85521133347722145; // OSGB false north
+		var af0 = a * f0;
+		var bf0 = b * f0;
+		var n = (af0 - bf0) / (af0 + bf0);
+		var Et = east - e0;
+		var phid = InitialLat(north, n0, af0, phi0, n, bf0);
+		var nu = af0 / (Math.sqrt(1 - (e2 * (Math.sin(phid) * Math.sin(phid)))));
+		var rho = (nu * (1 - e2)) / (1 - (e2 * (Math.sin(phid)) * (Math.sin(phid))));
+		var eta2 = (nu / rho) - 1;
+		var tlat2 = Math.tan(phid) * Math.tan(phid);
+		var tlat4 = Math.pow(Math.tan(phid), 4);
+		var tlat6 = Math.pow(Math.tan(phid), 6);
+		var clatm1 = Math.pow(Math.cos(phid), -1);
+		var VII = Math.tan(phid) / (2 * rho * nu);
+		var VIII = (Math.tan(phid) / (24 * rho * (nu * nu * nu))) * (5 + (3 * tlat2) + eta2 - (9 * eta2 * tlat2));
+		var IX = ((Math.tan(phid)) / (720 * rho * Math.pow(nu, 5))) * (61 + (90 * tlat2) + (45 * Math.pow(Math.tan(phid), 4)));
+		var phip = (phid - ((Et * Et) * VII) + (Math.pow(Et, 4) * VIII) - (Math.pow(Et, 6) * IX));
+		var X = Math.pow(Math.cos(phid), -1) / nu;
+		var XI = (clatm1 / (6 * (nu * nu * nu))) * ((nu / rho) + (2 * (tlat2)));
+		var XII = (clatm1 / (120 * Math.pow(nu, 5))) * (5 + (28 * tlat2) + (24 * tlat4));
+		var XIIA = clatm1 / (5040 * Math.pow(nu, 7)) * (61 + (662 * tlat2) + (1320 * tlat4) + (720 * tlat6));
+		var lambdap = (lam0 + (Et * X) - ((Et * Et * Et) * XI) + (Math.pow(Et, 5) * XII) - (Math.pow(Et, 7) * XIIA));
+		return [phip * 180 / Math.PI, lambdap * 180 / Math.PI];
+	}
+
+	function Marc(bf0, n, phi0, phi) {
+		var Marc = bf0 * (((1 + n + ((5 / 4) * (n * n)) + ((5 / 4) * (n * n * n))) * (phi - phi0)) - (((3 * n) + (3 * (n * n)) + ((21 / 8) * (n * n * n))) * (Math.sin(phi - phi0)) * (Math.cos(phi + phi0))) + ((((15 / 8) * (n * n)) + ((15 / 8) * (n * n * n))) * (Math.sin(2 * (phi - phi0))) * (Math.cos(2 * (phi + phi0)))) - (((35 / 24) * (n * n * n)) * (Math.sin(3 * (phi - phi0))) * (Math.cos(3 * (phi + phi0)))));
+		return (Marc);
+	}
+
+	function InitialLat(north, n0, af0, phi0, n, bf0) {
+		var phi1 = ((north - n0) / af0) + phi0;
+		var M = Marc(bf0, n, phi0, phi1);
+		var phi2 = ((north - n0 - M) / af0) + phi1;
+		var ind = 0;
+		while ((Math.abs(north - n0 - M) > 0.00001) && (ind < 20)) // max 20 iterations in case of error
+		{
+			ind = ind + 1;
+			phi2 = ((north - n0 - M) / af0) + phi1;
+			M = Marc(bf0, n, phi0, phi2);
+			phi1 = phi2;
+		}
+		return (phi2);
+	}
+	
+	function niceSize(b){
+		if(b > 1e12) return (b/1e12).toFixed(2)+" TB";
+		if(b > 1e9) return (b/1e9).toFixed(2)+" GB";
+		if(b > 1e6) return (b/1e6).toFixed(2)+" MB";
+		if(b > 1e3) return (b/1e3).toFixed(2)+" kB";
+		return (b)+" bytes";
+	}
+
+
 
 	// Define a new instance of the Converter
 	convert = new Converter();
