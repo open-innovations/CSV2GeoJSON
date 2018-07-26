@@ -290,11 +290,19 @@ S(document).ready(function(){
 				x = c;
 				convertfromosgb = true;
 			}
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "eastings"){
+				x = c;
+				convertfromosgb = true;
+			}
 
 			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "northing"){
+				y = c;
+				convertfromosgb = true;
+			}
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "northings"){
 				y = c;
 				convertfromosgb = true;
 			}
