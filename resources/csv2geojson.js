@@ -308,6 +308,8 @@ S(document).ready(function(){
 			if(this.data.fields.title[c] == "CoordinateReferenceSystem") crs = c;
 		}		
 
+		console.log(x,y)
+
 		if(x >= 0 && y >= 0){
 			for(var i = 0; i < this.data.rows.length; i++){
 				lat = this.data.rows[i][y];
@@ -428,7 +430,7 @@ S(document).ready(function(){
 		geojson.features = new Array();
 
 		for(var i = 0; i < this.data.rows.length; i++){
-			if(this.data.geo[i]){
+			if(this.data.geo[i].length == 2){
 
 				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.geo[i] }};
 				for(var c = 0; c < this.data.rows[i].length; c++){
@@ -441,7 +443,7 @@ S(document).ready(function(){
 			}
 		}
 
-		if(this.map){
+		if(this.map && geojson.features.length > 0){
 			if(this.layer) this.map.removeLayer(this.layer);
 
 			this.layer = L.geoJSON(geojson,geoattrs);
@@ -476,7 +478,7 @@ S(document).ready(function(){
 		var table = "";
 		var mx = Math.min(this.data.rows.length,this.maxrows);
 		mx = Math.min(mx,this.maxrowstable);
-		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' Only '+this.geocount+' records appear to have geography.':'')+"</p>";
+		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' <strong>'+this.geocount+' records appear to have geography</strong>.':'')+"</p>";
 		
 		table += "<div class=\"table-holder\"><table>";
 		table += '<tr><th>Title:</th>';
@@ -532,6 +534,8 @@ S(document).ready(function(){
 
 		// Go through form elements and update the format/constraints
 		if(row == "title") this.findGeography();
+		
+		this.buildTable();
 		this.buildMap();
 
 		return this;
