@@ -361,7 +361,8 @@ S(document).ready(function(){
 				maxZoom: 19
 			}).addTo(this.map);
 		}
-
+		
+		
 		function popuptext(feature){
 			// does this feature have a property named popupContent?
 			popup = '';
@@ -405,16 +406,18 @@ S(document).ready(function(){
 			}
 			return popup;
 		}
+		var customicon = makeMarker('#FF6700');
+		/*
 		function onEachFeature(feature, layer) {
 			popup = popuptext(feature);
 			if(popup) layer.bindPopup(popup);
 		}
-		var customicon = makeMarker('#FF6700');
 		var geoattrs = {
 			'style': { "color": '#E6007C', "weight": 2, "opacity": 0.65 },
 			'pointToLayer': function(geoJsonPoint, latlng) { return L.marker(latlng,{icon: customicon}); },
 			'onEachFeature': onEachFeature
-		};
+		};*/
+		
 
 		var geojson = {
 			"type": "FeatureCollection",
@@ -422,6 +425,10 @@ S(document).ready(function(){
 		}
 
 		geojson.features = new Array();
+
+		// Build marker list
+		var markerList = [];
+
 
 		for(var i = 0; i < this.data.rows.length; i++){
 			if(this.data.geo[i].length == 2){
@@ -434,15 +441,33 @@ S(document).ready(function(){
 					}
 				}
 				geojson.features.push(feature);
+
+				// Add marker
+				marker = L.marker([this.data.geo[i][1],this.data.geo[i][0]],{icon: customicon});
+				marker.bindPopup(popuptext(feature));
+				markerList.push(marker);
 			}
 		}
 
 		if(this.map && geojson.features.length > 0){
 			if(this.layer) this.map.removeLayer(this.layer);
 
-			this.layer = L.geoJSON(geojson,geoattrs);
+			//this.layer = L.geoJSON(geojson,geoattrs);
+			// Define a cluster layer
+			this.layer = L.markerClusterGroup({
+				chunkedLoading: true,
+				maxClusterRadius: 70,
+				iconCreateFunction: function (cluster) {
+					var markers = cluster.getAllChildMarkers();
+					return L.divIcon({ html: '<div class="marker-group" style="background-color:#FF6700;color:black">'+markers.length+'</div>', className: '',iconSize: L.point(40, 40) });
+				},
+				// Disable all of the defaults:
+				spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true
+			});
+			// Add marker list to layer
+			this.layer.addLayers(markerList);
+			this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
 			this.layer.addTo(this.map);
-			this.map.fitBounds(this.layer.getBounds());
 		}
 		
 		txt = JSON.stringify(geojson);
