@@ -431,7 +431,7 @@ S(document).ready(function(){
 
 
 		for(var i = 0; i < this.data.rows.length; i++){
-			if(this.data.geo[i].length == 2){
+			if(this.data.geo[i] && this.data.geo[i].length == 2){
 
 				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.geo[i] }};
 				for(var c = 0; c < this.data.rows[i].length; c++){
@@ -539,7 +539,7 @@ S(document).ready(function(){
 
 
 		for(var i = 0; i < mx; i++){
-			tbody += '<tr'+(this.data.geo[i].length==2 ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
+			tbody += '<tr'+(this.data.geo[i] && this.data.geo[i].length==2 ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
 			for(var c = 0; c < this.data.rows[i].length; c++){
 				tbody += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
