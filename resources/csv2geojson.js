@@ -283,30 +283,22 @@ S(document).ready(function(){
 
 		var convertfromosgb = false;
 		for(var c = 0; c < this.data.fields.title.length; c++){
+			// Deal with X coordinate
 			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
-			if(x < 0 && this.data.fields.title[c].toLowerCase() == "easting"){
+			if(x < 0 && (this.data.fields.title[c].toLowerCase() == "easting" || this.data.fields.title[c].toLowerCase() == "eastings")){
 				x = c;
 				convertfromosgb = true;
 			}
-			if(x < 0 && this.data.fields.title[c].toLowerCase() == "eastings"){
-				x = c;
-				convertfromosgb = true;
-			}
-
+			// Deal with Y coordinate
 			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
-			if(y < 0 && this.data.fields.title[c].toLowerCase() == "northing"){
+			if(y < 0 && (this.data.fields.title[c].toLowerCase() == "northing" || this.data.fields.title[c].toLowerCase() == "northings")){
 				y = c;
 				convertfromosgb = true;
-			}
-			if(y < 0 && this.data.fields.title[c].toLowerCase() == "northings"){
-				y = c;
-				convertfromosgb = true;
-			}
-			
+			}			
 		}
 
 		this.data.geo = new Array(this.data.rows.length);
