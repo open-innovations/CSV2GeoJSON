@@ -475,50 +475,59 @@ S(document).ready(function(){
 	Converter.prototype.buildTable = function(){
 
 		// Create the data table
-		var table = "";
+		var thead = "";
+		var tbody = "";
 		var mx = Math.min(this.data.rows.length,this.maxrows);
 		mx = Math.min(mx,this.maxrowstable);
-		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' <strong>'+this.geocount+' records appear to have geography</strong>.':'')+"</p>";
-		
-		table += "<div class=\"table-holder\"><table>";
-		table += '<tr><th>Title:</th>';
 
-		for(var c in this.data.fields.name){
-			table += '<th><input id="title-'+c+'" type="text" value="'+this.data.fields.title[c]+'" data-row="title" data-col="'+c+'" /></th>';
+		if(S('#output-table').length==0){
+			S('#contents').html('<p id="about-table"></p><div id="output-table" class="table-holder"><table><thead></thead><tbody></tbody></table></div><output id="map"></output>');
+
+
+			thead += '<tr><th>Title:</th>';
+
+			for(var c in this.data.fields.name){
+				thead += '<th><input id="title-'+c+'" type="text" value="'+this.data.fields.title[c]+'" data-row="title" data-col="'+c+'" /></th>';
+			}
+
+			thead += '</tr>';
+			thead += '<tr><th>Type:</th>';
+			for(var c in this.data.fields.name){
+				thead += '<th>'+this.buildSelect(this.data.fields.format[c],"format",c)+'</th>';
+			}
+			thead += '</tr>';
+
+			thead += '<tr><th>Keep?</th>';
+			for(var c in this.data.fields.name){
+				thead += '<th class="constraint"><label></label>'+this.buildTrueFalse(this.data.fields.required[c],"required",c)+'<!--<button class="delete" title="Remove this constraint from this column">&times;</button><button class="add" title="Add a constraint to this column">&plus;</button>--></th>';
+			}
+			thead += '</tr>';
+
+			S('#output-table thead').html(thead);
+
+			S('#contents select').on('change',{me:this},function(e,i){
+				var el = document.getElementById(e.currentTarget.id);
+				var value = el.options[el.selectedIndex].value;
+				e.data.me.update(e.currentTarget.id,value);
+			});
+			S('#contents input').on('change',{me:this},function(e,i){
+				e.data.me.update(e.currentTarget.id,e.currentTarget.value);
+			});
+
 		}
 
-		table += '</tr>';
-		table += '<tr><th>Type:</th>';
-		for(var c in this.data.fields.name){
-			table += '<th>'+this.buildSelect(this.data.fields.format[c],"format",c)+'</th>';
-		}
-		table += '</tr>';
+		S('#about-table').html("We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' <strong>'+this.geocount+' records appear to have geography</strong>.':''));
 
-		table += '<tr><th>Keep?</th>';
-		for(var c in this.data.fields.name){
-			table += '<th class="constraint"><label></label>'+this.buildTrueFalse(this.data.fields.required[c],"required",c)+'<!--<button class="delete" title="Remove this constraint from this column">&times;</button><button class="add" title="Add a constraint to this column">&plus;</button>--></th>';
-		}
-		table += '</tr>';
 
 		for(var i = 0; i < mx; i++){
-			table += '<tr'+(this.data.geo[i] ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
+			tbody += '<tr'+(this.data.geo[i] ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
 			for(var c = 0; c < this.data.rows[i].length; c++){
-				table += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
+				tbody += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
-			table += '</tr>';
+			tbody += '</tr>';
 		}
-		table += '</table></div>';
-		table += '<output id="map"></output>';
-		S('#contents').html(table);
+		S('#output-table tbody').html(tbody);
 
-		S('#contents select').on('change',{me:this},function(e,i){
-			var el = document.getElementById(e.currentTarget.id);
-			var value = el.options[el.selectedIndex].value;
-			e.data.me.update(e.currentTarget.id,value);
-		});
-		S('#contents input').on('change',{me:this},function(e,i){
-			e.data.me.update(e.currentTarget.id,e.currentTarget.value);
-		});
 		return this;
 	}
 
