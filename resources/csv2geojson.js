@@ -286,28 +286,42 @@ S(document).ready(function(){
 			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "easting"){
+				x = c;
+				convertfromosgb = true;
+			}
 
 			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
 			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "northing"){
+				y = c;
+				convertfromosgb = true;
+			}
 			
 		}
 
 		this.data.geo = new Array(this.data.rows.length);
 		this.geocount = 0;
-		
+		var crs = -1;
+		for(var c = 0; c < this.data.fields.title.length; c++){
+			if(this.data.fields.title[c] == "CoordinateReferenceSystem") crs = c;
+		}		
+
 		if(x >= 0 && y >= 0){
 			for(var i = 0; i < this.data.rows.length; i++){
 				lat = this.data.rows[i][y];
 				lon = this.data.rows[i][x];
-				for(var c = 0; c < this.data.fields.title.length; c++){
-					if(this.data.fields.title[c] == "CoordinateReferenceSystem"){
-						if(typeof this.data.rows[i][c]==="string" && this.data.rows[i][c].toLowerCase() == "osgb36"){
-							ll = NEtoLL([lat,lon]);
-							lat = ll[0];
-							lon = ll[1];
-						}
+				ll = [];
+				if(crs >= 0){
+					if(typeof this.data.rows[i][crs]==="string" && this.data.rows[i][crs].toLowerCase() == "osgb36"){
+						ll = NEtoLL([lat,lon]);
 					}
+				}
+				if(convertfromosgb) ll = NEtoLL([lat,lon]);
+				if(ll.length == 2){
+					lat = ll[0];
+					lon = ll[1];				
 				}
 				if(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180){
 					this.data.geo[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
