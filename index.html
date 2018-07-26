@@ -15,13 +15,21 @@
 	<meta name="twitter:image" property="og:image" content="https://odileeds.org/resources/images/odileeds.png">
 	<style>
 	#map { 
-		height: 600px;
+		height: 620px;
 		display: block;
 		width: 100%;
 	}
 	.leaflet-popup-content h3 { margin-top: 0px; }
 	textarea, #map, td, th, table {
 		border: 1px solid #cccccc;
+	}
+	table { max-height: 400px; overflow: scroll; }
+	td {
+		white-space: nowrap;
+		overflow: hidden;
+	}
+	tr.nogeo {
+		background-color: #EF3AAB;
 	}
 	.dropzone {
 		border: 2px dashed #999999;

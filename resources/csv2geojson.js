@@ -4,6 +4,54 @@
 var convert;
 S(document).ready(function(){
 
+	/**
+	 * CSVToArray parses any String of Data including '\r' '\n' characters,
+	 * and returns an array with the rows of data.
+	 * @param {String} CSV_string - the CSV string you need to parse
+	 * @param {String} delimiter - the delimeter used to separate fields of data
+	 * @returns {Array} rows - rows of CSV where first row are column headers
+	 */
+	function CSVToArray (CSV_string, delimiter) {
+		delimiter = (delimiter || ","); // user-supplied delimeter or default comma
+
+		var pattern = new RegExp( // regular expression to parse the CSV values.
+			( // Delimiters:
+				"(\\" + delimiter + "|\\r?\\n|\\r|^)" +
+				// Quoted fields.
+				"(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+				// Standard fields.
+				"([^\"\\" + delimiter + "\\r\\n]*))"
+			), "gi"
+		);
+
+		var rows = [[]];  // array to hold our data. First row is column headers.
+		// array to hold our individual pattern matching groups:
+		var matches = false; // false if we don't find any matches
+		// Loop until we no longer find a regular expression match
+		while (matches = pattern.exec( CSV_string )) {
+			var matched_delimiter = matches[1]; // Get the matched delimiter
+			// Check if the delimiter has a length (and is not the start of string)
+			// and if it matches field delimiter. If not, it is a row delimiter.
+			if (matched_delimiter.length && matched_delimiter !== delimiter) {
+				// Since this is a new row of data, add an empty row to the array.
+				rows.push( [] );
+			}
+			var matched_value;
+			// Once we have eliminated the delimiter, check to see
+			// what kind of value was captured (quoted or unquoted):
+			if (matches[2]) { // found quoted value. unescape any double quotes.
+				matched_value = matches[2].replace(
+					new RegExp( "\"\"", "g" ), "\""
+				);
+			} else { // found a non-quoted value
+				matched_value = matches[3];
+			}
+			// Now that we have our value string, let's add
+			// it to the data array.
+			rows[rows.length - 1].push(matched_value);
+		}
+		return rows; // Return the parsed data Array
+	}
 
 	// Function to parse a CSV file and return a JSON structure
 	// Guesses the format of each column based on the data in it.
@@ -12,7 +60,7 @@ S(document).ready(function(){
 		// If we haven't sent a start row value we assume there is a header row
 		if(typeof start!=="number") start = 1;
 		// Split by the end of line characters
-		if(typeof data==="string") data = data.split(/[\n\r]+/);
+		if(typeof data==="string") data = CSVToArray(data);
 		// The last row to parse
 		if(typeof end!=="number") end = data.length;
 
@@ -32,8 +80,7 @@ S(document).ready(function(){
 			// If there is no content on this line we skip it
 			if(data[i] == "") continue;
 
-			// Split the line by commas (but not commas within quotation marks
-			line = data[i].split(/,(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))/);
+			line = data[i];
 
 			datum = new Array(line.length);
 			types = new Array(line.length);
@@ -151,7 +198,7 @@ S(document).ready(function(){
 	function Converter(file){
 
 		this.maxrows = 100000;	// Limit on the number of rows to display
-		this.maxrowstable = 5;	// Limit on the number of rows to display
+		this.maxrowstable = 8;	// Limit on the number of rows to display
 		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
 		
 		// The supported data types as specified in http://csvlint.io/about
@@ -211,11 +258,15 @@ S(document).ready(function(){
 			// so limit the number of rows
 			this.maxrows = Math.floor(this.maxcells/attr.cols);
 		}
-		this.records = attr.rows; 
 
 		// Convert the CSV to a JSON structure
 		this.data = CSV2JSON(data,1,this.maxrows+1);
+		this.records = this.data.rows.length; 
 
+
+		// Work out the geography of the points
+		this.findGeography();
+		
 		// Construct the HTML table
 		this.buildTable()
 
@@ -223,10 +274,49 @@ S(document).ready(function(){
 		this.buildMap();
 
 
-		// and the JSON schema
-		this.buildSchema();
-
 		return;
+	}
+	
+	Converter.prototype.findGeography = function(){
+		var x = -1;
+		var y = -1;
+
+		var convertfromosgb = false;
+		for(var c = 0; c < this.data.fields.title.length; c++){
+			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
+			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
+
+			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
+			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
+			
+		}
+
+		this.data.geo = new Array(this.data.rows.length);
+		this.geocount = 0;
+		
+		if(x >= 0 && y >= 0){
+			for(var i = 0; i < this.data.rows.length; i++){
+				lat = this.data.rows[i][y];
+				lon = this.data.rows[i][x];
+				for(var c = 0; c < this.data.fields.title.length; c++){
+					if(this.data.fields.title[c] == "CoordinateReferenceSystem"){
+						if(typeof this.data.rows[i][c]==="string" && this.data.rows[i][c].toLowerCase() == "osgb36"){
+							ll = NEtoLL([lat,lon]);
+							lat = ll[0];
+							lon = ll[1];
+						}
+					}
+				}
+				if(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180){
+					this.data.geo[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
+					this.geocount++;
+				}
+			}
+		}
+
+		return this;
 	}
 
 	Converter.prototype.buildMap = function(){
@@ -322,37 +412,11 @@ S(document).ready(function(){
 		}
 
 		geojson.features = new Array();
-		var x = -1;
-		var y = -1;
 
+		for(var i = 0; i < this.data.rows.length; i++){
+			if(this.data.geo[i]){
 
-		var convertfromosgb = false;
-		for(var c = 0; c < this.data.fields.title.length; c++){
-			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
-			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
-			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
-
-			if(this.data.fields.title[c].toLowerCase() == "latitude") y = c;
-			if(y < 0 && this.data.fields.title[c].toLowerCase() == "lat") y = c;
-			if(y < 0 && this.data.fields.title[c].toLowerCase() == "geoy") y = c;
-			
-		}
-
-		if(x >= 0 && y >= 0){
-			for(var i = 0; i < this.data.rows.length; i++){
-				lat = this.data.rows[i][y];
-				lon = this.data.rows[i][x];
-				for(var c = 0; c < this.data.fields.title.length; c++){
-					if(this.data.fields.title[c] == "CoordinateReferenceSystem"){
-						if(typeof this.data.rows[i][c]==="string" && this.data.rows[i][c].toLowerCase() == "osgb36"){
-							ll = NEtoLL([lat,lon]);
-							lat = ll[0];
-							lon = ll[1];
-						}
-					}
-				}
-
-				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": [ parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6)) ] }};
+				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.geo[i] }};
 				for(var c = 0; c < this.data.rows[i].length; c++){
 					var n = this.data.fields.title[c];
 					if(this.data.fields.required[c]==true){
@@ -398,7 +462,7 @@ S(document).ready(function(){
 		var table = "";
 		var mx = Math.min(this.data.rows.length,this.maxrows);
 		mx = Math.min(mx,this.maxrowstable);
-		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+").</p>";
+		table += "<p>We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' Only '+this.geocount+' records appear to have geography.':'')+"</p>";
 		
 		table += "<div class=\"table-holder\"><table>";
 		table += '<tr><th>Title:</th>';
@@ -421,7 +485,7 @@ S(document).ready(function(){
 		table += '</tr>';
 
 		for(var i = 0; i < mx; i++){
-			table += '<tr><td class="rn">'+(i+1)+'</td>';
+			table += '<tr'+(this.data.geo[i] ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
 			for(var c = 0; c < this.data.rows[i].length; c++){
 				table += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
@@ -453,42 +517,12 @@ S(document).ready(function(){
 		if(row == "required") this.data.fields.required[col] = (value.toLowerCase() == "true" ? true : false);
 
 		// Go through form elements and update the format/constraints
+		if(row == "title") this.findGeography();
 		this.buildMap();
 
 		return this;
 	}
 			
-	// Build the JSON schema
-	Converter.prototype.buildSchema = function(){
-		var ref,t,c,json,i,lines;
-		json = "{\n";
-		json += '\t"fields": [\n';
-		i = 0;
-		for(c in this.data.fields.name){
-			ref = "";
-			for(t = 0 ; t < this.datatypes.length; t++){
-				if(this.datatypes[t].label == this.data.fields.format[c]) ref = this.datatypes[t].ref;
-			}
-			json += '\t\t{\n';
-			json += '\t\t\t"name": "'+this.data.fields.name[c]+'",\n';
-			json += '\t\t\t"title": "'+this.data.fields.title[c]+'",\n';
-			json += '\t\t\t"constraints": {\n';
-			json += '\t\t\t\t"required": '+this.data.fields.required[c]+',\n';
-			json += '\t\t\t\t"type": "'+ref+'"\n';
-			json += '\t\t\t}\n';
-			json += '\t\t}'+(i < this.data.fields.format.length-1 ? ',':'')+'\n';
-			i++;
-		}
-		json += '\t]\n';
-		json += '}';
-		lines = json.split(/\n/);
-		this.json = json;
-		// Set the content of the output and resize the textarea so it is all visible
-		S('#schema textarea').html(''+json+'').css({'height':(lines.length+1)+'em','line-height':'1em'});
-
-		return this;
-	}
-
 	Converter.prototype.save = function(){
 
 		// Bail out if there is no Blob function
@@ -546,7 +580,7 @@ S(document).ready(function(){
 				//if(!f.type.match('text/csv')) continue;
 
 				var start = 0;
-				var stop = Math.min(100000, f.size - 1);
+				var stop = f.size - 1; //Math.min(100000, f.size - 1);
 
 				var reader = new FileReader();
 
