@@ -407,28 +407,14 @@ S(document).ready(function(){
 			return popup;
 		}
 		var customicon = makeMarker('#FF6700');
-		/*
-		function onEachFeature(feature, layer) {
-			popup = popuptext(feature);
-			if(popup) layer.bindPopup(popup);
-		}
-		var geoattrs = {
-			'style': { "color": '#E6007C', "weight": 2, "opacity": 0.65 },
-			'pointToLayer': function(geoJsonPoint, latlng) { return L.marker(latlng,{icon: customicon}); },
-			'onEachFeature': onEachFeature
-		};*/
-		
 
-		var geojson = {
+		this.geojson = {
 			"type": "FeatureCollection",
 			"features": []
 		}
 
-		geojson.features = new Array();
-
 		// Build marker list
 		var markerList = [];
-
 
 		for(var i = 0; i < this.data.rows.length; i++){
 			if(this.data.geo[i] && this.data.geo[i].length == 2){
@@ -440,7 +426,7 @@ S(document).ready(function(){
 						feature.properties[n] = this.data.rows[i][c];
 					}
 				}
-				geojson.features.push(feature);
+				this.geojson.features.push(feature);
 
 				// Add marker
 				marker = L.marker([this.data.geo[i][1],this.data.geo[i][0]],{icon: customicon});
@@ -449,10 +435,9 @@ S(document).ready(function(){
 			}
 		}
 
-		if(this.map && geojson.features.length > 0){
+		if(this.map && this.geojson.features.length > 0){
 			if(this.layer) this.map.removeLayer(this.layer);
 
-			//this.layer = L.geoJSON(geojson,geoattrs);
 			// Define a cluster layer
 			this.layer = L.markerClusterGroup({
 				chunkedLoading: true,
@@ -470,7 +455,7 @@ S(document).ready(function(){
 			this.layer.addTo(this.map);
 		}
 		
-		txt = JSON.stringify(geojson);
+		txt = JSON.stringify(this.geojson);
 		
 		S('#geojson textarea').html(txt);
 
@@ -481,7 +466,6 @@ S(document).ready(function(){
 			if(b > 1e3) return (b/1e3).toFixed(2)+" kB";
 			return (b)+" bytes";
 		}
-
 
 		S('#filesize').html('<p>File size: '+niceSize(txt.length)+'</p>');
 
@@ -574,7 +558,7 @@ S(document).ready(function(){
 		// Bail out if there is no Blob function
 		if(typeof Blob!=="function") return this;
 
-		var textFileAsBlob = new Blob([this.json], {type:'text/plain'});
+		var textFileAsBlob = new Blob([JSON.stringify(this.geojson)], {type:'text/plain'});
 		if(!this.file) this.file = "schema.json";
 		var fileNameToSaveAs = this.file.substring(0,this.file.lastIndexOf("."))+".geojson";
 
