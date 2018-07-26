@@ -436,7 +436,7 @@ S(document).ready(function(){
 				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.geo[i] }};
 				for(var c = 0; c < this.data.rows[i].length; c++){
 					var n = this.data.fields.title[c];
-					if(this.data.fields.required[c]==true){
+					if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
 						feature.properties[n] = this.data.rows[i][c];
 					}
 				}
