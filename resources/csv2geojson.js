@@ -285,7 +285,7 @@ S(document).ready(function(){
 		for(var c = 0; c < this.data.fields.title.length; c++){
 			// Deal with X coordinate
 			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
-			if(x < 0 && this.data.fields.title[c].toLowerCase() == "lon") x = c;
+			if(x < 0 && (this.data.fields.title[c].toLowerCase() == "lon" || this.data.fields.title[c].toLowerCase() == "long")) x = c;
 			if(x < 0 && this.data.fields.title[c].toLowerCase() == "geox") x = c;
 			if(x < 0 && (this.data.fields.title[c].toLowerCase() == "easting" || this.data.fields.title[c].toLowerCase() == "eastings")){
 				x = c;
@@ -315,10 +315,10 @@ S(document).ready(function(){
 				ll = [];
 				if(crs >= 0){
 					if(typeof this.data.rows[i][crs]==="string" && this.data.rows[i][crs].toLowerCase() == "osgb36"){
-						ll = NEtoLL([lat,lon]);
+						ll = NEtoLL([lon,lat]);
 					}
 				}
-				if(convertfromosgb) ll = NEtoLL([lat,lon]);
+				if(convertfromosgb) ll = NEtoLL([lon,lat]);
 				if(ll.length == 2){
 					lat = ll[0];
 					lon = ll[1];				
