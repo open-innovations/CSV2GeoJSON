@@ -197,10 +197,8 @@ S(document).ready(function(){
 	// Main function
 	function Converter(file){
 
-		this.maxrows = 100000;	// Limit on the number of rows to display
 		this.maxrowstable = 8;	// Limit on the number of rows to display
-		this.maxcells = 3000;	// The row limit can be over-ridden by the maximum number of cells to show
-		
+	
 		// The supported data types as specified in http://csvlint.io/about
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
@@ -253,14 +251,8 @@ S(document).ready(function(){
 
 		this.csv = data;
 
-		if(attr.cols*this.maxrows > this.maxcells){
-			// We have lots of columns meaning that we have more cells that we're allowing
-			// so limit the number of rows
-			this.maxrows = Math.floor(this.maxcells/attr.cols);
-		}
-
 		// Convert the CSV to a JSON structure
-		this.data = CSV2JSON(data,1,this.maxrows+1);
+		this.data = CSV2JSON(data,1);
 		this.records = this.data.rows.length; 
 
 
@@ -308,26 +300,28 @@ S(document).ready(function(){
 			if(this.data.fields.title[c] == "CoordinateReferenceSystem") crs = c;
 		}		
 
-		console.log(x,y)
-
 		if(x >= 0 && y >= 0){
 			for(var i = 0; i < this.data.rows.length; i++){
 				lat = this.data.rows[i][y];
 				lon = this.data.rows[i][x];
-				ll = [];
-				if(crs >= 0){
-					if(typeof this.data.rows[i][crs]==="string" && this.data.rows[i][crs].toLowerCase() == "osgb36"){
-						ll = NEtoLL([lon,lat]);
+				if(lat!="" && lon!=""){
+					ll = [];
+					if(crs >= 0){
+						if(typeof this.data.rows[i][crs]==="string" && this.data.rows[i][crs].toLowerCase() == "osgb36"){
+							ll = NEtoLL([lon,lat]);
+						}
 					}
-				}
-				if(convertfromosgb) ll = NEtoLL([lon,lat]);
-				if(ll.length == 2){
-					lat = ll[0];
-					lon = ll[1];				
-				}
-				if(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180){
-					this.data.geo[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
-					this.geocount++;
+					if(convertfromosgb) ll = NEtoLL([lon,lat]);
+					if(ll.length == 2){
+						lat = ll[0];
+						lon = ll[1];				
+					}
+					if(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180){
+						this.data.geo[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
+						this.geocount++;
+					}
+				}else{
+					this.data.geo[i] = [];
 				}
 			}
 		}
@@ -466,6 +460,7 @@ S(document).ready(function(){
 
 		S('#filesize').html('<p>File size: '+niceSize(txt.length)+'</p>');
 
+		S('.step2').removeClass('processing').addClass('checked');
 
 		return this;
 	}
@@ -477,8 +472,7 @@ S(document).ready(function(){
 		// Create the data table
 		var thead = "";
 		var tbody = "";
-		var mx = Math.min(this.data.rows.length,this.maxrows);
-		mx = Math.min(mx,this.maxrowstable);
+		var mx = Math.min(this.data.rows.length,this.maxrowstable);
 
 		if(S('#output-table').length==0){
 			S('#contents').html('<p id="about-table"></p><div id="output-table" class="table-holder"><table><thead></thead><tbody></tbody></table></div><output id="map"></output>');
@@ -520,7 +514,7 @@ S(document).ready(function(){
 
 
 		for(var i = 0; i < mx; i++){
-			tbody += '<tr'+(this.data.geo[i] ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
+			tbody += '<tr'+(this.data.geo[i].length==2 ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
 			for(var c = 0; c < this.data.rows[i].length; c++){
 				tbody += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
@@ -634,13 +628,7 @@ S(document).ready(function(){
 			//document.getElementById('list').innerHTML = '<p>File loaded:</p><ul>' + output.join('') + '</ul>';
 			S('#drop_zone').append(output).addClass('loaded');
 			S('.step1').addClass('checked');
-		}else if(typ == "json"){
-
-			f = files[0];
-			output = '<div><strong>'+ escape(f.name)+ '</strong> ('+ (f.type || 'n/a')+ ') - ' + f.size + ' bytes, last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
-			S('#drop_zone_json').append(output).addClass('loaded');
-			S('#validate').css({'display':'block'});
-			S('.step4').addClass('checked');
+			S('.step2').addClass('processing');
 		}
 		return this;
 	}
