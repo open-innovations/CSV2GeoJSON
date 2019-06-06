@@ -8,12 +8,13 @@ S(document).ready(function(){
 
 	function receiveMessage(event) {
 		console.log(event.origin)
-		//if(event.origin !== "http://example.org:8080"){
-			S('#drop_zone').append('<div><strong>Received data from '+event.data.referer+'</strong> - ' + niceSize(event.data.csv.length) + '</div>').addClass('loaded');
-			S('.step1').addClass('checked');
-			S('.step2').addClass('processing');
-			convert.parseCSV(event.data.csv);
-		//}
+		if(event.origin !== "https://odileeds.github.io") return;
+
+		S('#drop_zone').append('<div><strong>Received data from '+event.data.referer+'</strong> - ' + niceSize(event.data.csv.length) + '</div>').addClass('loaded');
+		S('.step1').addClass('checked');
+		S('.step2').addClass('processing');
+		convert.parseCSV(event.data.csv);
+
 		return;
 	}
 
