@@ -1,8 +1,21 @@
 /*!
- * ODI Leeds CSV to GeoJSON converter (version 1.0)
+ * ODI Leeds CSV to GeoJSON converter (version 1.1)
  */
 var convert;
 S(document).ready(function(){
+
+	window.addEventListener("message", receiveMessage, false);
+
+	function receiveMessage(event) {
+		console.log(event.origin)
+		//if(event.origin !== "http://example.org:8080"){
+			S('#drop_zone').append('<div><strong>Received data from '+event.data.referer+'</strong> - ' + niceSize(event.data.csv.length) + '</div>').addClass('loaded');
+			S('.step1').addClass('checked');
+			S('.step2').addClass('processing');
+			convert.parseCSV(event.data.csv);
+		//}
+		return;
+	}
 
 	/**
 	 * CSVToArray parses any String of Data including '\r' '\n' characters,
@@ -175,7 +188,9 @@ S(document).ready(function(){
 		evt.preventDefault();
 		S(this).addClass('drop');
 	}
-	function dragOff(){ S('.drop').removeClass('drop'); }
+	function dragOff(){
+		S(this).removeClass('drop');
+	}
 
 	String.prototype.regexLastIndexOf = function(regex, startpos) {
 		regex = (regex.global) ? regex : new RegExp(regex.source, "g" + (regex.ignoreCase ? "i" : "") + (regex.multiLine ? "m" : ""));
@@ -215,14 +230,18 @@ S(document).ready(function(){
 			e.data.me.save();
 		});
 
-		var _obj = this;
 
 		// Setup the dnd listeners.
 		var dropZone = document.getElementById('drop_zone');
 		dropZone.addEventListener('dragover', dropOver, false);
 		dropZone.addEventListener('dragout', dragOff, false);
 
-		document.getElementById('standard_files').addEventListener('change', function(evt){
+
+		var _obj = this;
+		document.getElementById('standard_files').addEventListener('change',function(evt){
+			evt.stopPropagation();
+			evt.preventDefault();
+			console.log('change')
 			return _obj.handleFileSelect(evt,'csv');
 		}, false);
 
@@ -587,8 +606,6 @@ S(document).ready(function(){
 
 	Converter.prototype.handleFileSelect = function(evt,typ){
 
-		evt.stopPropagation();
-		evt.preventDefault();
 		dragOff();
 
 		var files;
