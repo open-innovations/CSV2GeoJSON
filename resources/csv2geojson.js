@@ -4,8 +4,6 @@
 var convert;
 S(document).ready(function(){
 
-	window.addEventListener("message", receiveMessage, false);
-
 	function receiveMessage(event) {
 		console.log(event.origin)
 		if(event.origin !== "https://odileeds.github.io") return;
@@ -17,6 +15,8 @@ S(document).ready(function(){
 
 		return;
 	}
+
+	window.addEventListener("message", receiveMessage, false);
 
 	/**
 	 * CSVToArray parses any String of Data including '\r' '\n' characters,
