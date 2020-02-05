@@ -449,6 +449,8 @@ S(document).ready(function(){
 						});
 					}
 				}
+			}else{
+				if(typeof callback==="function") callback.call(this);
 			}
 		}
 
@@ -650,8 +652,11 @@ S(document).ready(function(){
 				this.layer.addLayers(markerList);
 			}
 		}
-		this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
-		this.layer.addTo(this.map);
+		
+		if(this.layer){
+			this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
+			this.layer.addTo(this.map);
+		}
 
 
 		
@@ -749,6 +754,7 @@ S(document).ready(function(){
 		// Go through form elements and update the format/constraints
 		if(row == "title" || row == "required"){
 			this.findGeography(function(){
+				this.buildTable();
 				this.buildMap();
 			});
 		}
