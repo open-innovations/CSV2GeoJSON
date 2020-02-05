@@ -8,9 +8,10 @@ S(document).ready(function(){
 		console.log('Received message from '+event.origin);
 		if(event.origin !== "https://odileeds.github.io") return;
 
+		convert.reset();
+
 		S('#drop_zone').append('<div><strong>Received data from '+event.data.referer+'</strong> - ' + niceSize(event.data.csv.length) + '</div>').addClass('loaded');
-		S('.step1').addClass('checked');
-		S('.step2').addClass('processing');
+
 		convert.parseCSV(event.data.csv);
 
 		return;
@@ -187,7 +188,7 @@ S(document).ready(function(){
 	function dropOver(evt){
 		evt.stopPropagation();
 		evt.preventDefault();
-		S(this).addClass('drop');
+		S(this).addClass('drop').removeClass('loaded');
 	}
 	function dragOff(){
 		S(this).removeClass('drop');
@@ -213,11 +214,13 @@ S(document).ready(function(){
 	// Main function
 	function Converter(file){
 
-		this.maxrowstable = 8;	// Limit on the number of rows to display
+		this.maxrowstable = 10;	// Limit on the number of rows to display
 	
 		// The supported data types as specified in http://csvlint.io/about
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
+
+		this.geographies = {'LSOA':{}};
 
 		// If we provided a filename we load that now
 		if(file) S().ajax(file,{'complete':this.parseCSV,'this':this,'cache':false});
@@ -242,13 +245,54 @@ S(document).ready(function(){
 		document.getElementById('standard_files').addEventListener('change',function(evt){
 			evt.stopPropagation();
 			evt.preventDefault();
-			console.log('change')
+			_obj.reset();
 			return _obj.handleFileSelect(evt,'csv');
 		}, false);
 
+		S('#results').css({'display':'none'});
+		S('ul.tabs > li > a').on('click',{me:this},function(e){
+			e.preventDefault();
+			e.stopPropagation();
+			selectPanel(e.currentTarget.getAttribute('href'));
+		});
+		
+		S('#reset').on('click',{me:this},function(e){
+			e.preventDefault();
+			e.data.me.reset();
+		});
+
 		return this;
 	}
+	
+	Converter.prototype.reset = function(){
+		S('#results').css({'display':'none'});
+		S('#drop_zone').removeClass('loaded');
+		S('#filedetails').remove();
+		S('#contents').html('');
+		delete this.csv;
+		delete this.attr;
+		delete this.data;
+		delete this.records;
+		delete this.file;
+		S('.dropzone .file-details').html("");
+	}
 
+	function selectPanel(panel){
+		var tabs = S('ul.tabs > li > a');
+		var panels = S('.panel');
+
+		for(var i = 0; i < tabs.length; i++){
+			if(tabs[i].getAttribute('href')==panel) S(tabs[i]).addClass('b6-bg').removeClass('b4-bg');
+			else S(tabs[i]).removeClass('b6-bg').addClass('b4-bg');
+		}
+		
+		for(var i = 0; i < panels.length; i++){
+			if(panels[i].getAttribute('id')==panel.substr(1)) S(panels[i]).css({'display':''});
+			else S(panels[i]).css({'display':'none'});
+		}
+		
+		if(panel == "#map") S('#map').trigger('resize');
+	}
 	// Return an HTML select box for the data types
 	Converter.prototype.buildSelect = function(typ,row,col){
 		var html = '<select id="'+row+'-'+col+'" data-row="'+row+'" data-col="'+col+'">';
@@ -275,25 +319,30 @@ S(document).ready(function(){
 		this.data = CSV2JSON(data,1);
 		this.records = this.data.rows.length; 
 
-
 		// Work out the geography of the points
-		this.findGeography();
-		
-		// Construct the HTML table
-		this.buildTable()
+		this.findGeography(function(){
+			// Construct the HTML table
+			this.buildTable()
 
-		// Construct the map
-		this.buildMap();
+			// Construct the map
+			this.buildMap();
 
+			selectPanel('#table');
+		});
 
 		return;
 	}
-	
-	Converter.prototype.findGeography = function(){
+
+	Converter.prototype.findGeography = function(callback){
+
 		var x = -1;
 		var y = -1;
+		var p = -1;
+		var crs = -1;
 
 		var convertfromosgb = false;
+		this.geotype = "";
+
 		for(var c = 0; c < this.data.fields.title.length; c++){
 			// Deal with X coordinate
 			if(this.data.fields.title[c].toLowerCase() == "longitude") x = c;
@@ -310,15 +359,12 @@ S(document).ready(function(){
 			if(y < 0 && (this.data.fields.title[c].toLowerCase() == "northing" || this.data.fields.title[c].toLowerCase() == "northings")){
 				y = c;
 				convertfromosgb = true;
-			}			
+			}
+			if(this.data.fields.title[c] == "CoordinateReferenceSystem") crs = c;
 		}
 
-		this.data.geo = new Array(this.data.rows.length);
+		this.data.coords = new Array(this.data.rows.length);
 		this.geocount = 0;
-		var crs = -1;
-		for(var c = 0; c < this.data.fields.title.length; c++){
-			if(this.data.fields.title[c] == "CoordinateReferenceSystem") crs = c;
-		}		
 
 		if(x >= 0 && y >= 0){
 			for(var i = 0; i < this.data.rows.length; i++){
@@ -337,11 +383,71 @@ S(document).ready(function(){
 						lon = ll[1];				
 					}
 					if(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180){
-						this.data.geo[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
+						this.data.coords[i] = [parseFloat(parseFloat(lon).toFixed(6)), parseFloat(parseFloat(lat).toFixed(6))];
 						this.geocount++;
 					}
 				}else{
-					this.data.geo[i] = [];
+					this.data.coords[i] = [];
+				}
+			}
+
+			if(typeof callback==="function") callback.call(this);
+
+		}else{
+			
+			this.geotype = "";
+			for(var c = 0; c < this.data.fields.title.length; c++){
+				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA11CD")){
+					p = c;
+					this.geotype = "LSOA";
+				}
+			}
+			if(p >= 0 && this.geotype && this.geographies[this.geotype]){
+				var polys = {};
+				var i,poly;
+				for(i = 0; i < this.data.rows.length; i++){
+					poly = this.data.rows[i][p];
+					if(!this.geographies[this.geotype][poly]) polys[poly] = 'https://odileeds.github.io/geography-bits/data/'+this.geotype+'/'+poly+'.geojsonl';
+				}
+				var toload = 0;
+				var loaded = 0;
+				for(poly in polys) toload++;
+				if(toload == 0){
+					// Immediately call the callback
+					if(typeof callback==="function") callback.call(this);
+				}else{
+					// Load every LSOA
+					for(poly in polys){
+						S().ajax(polys[poly],{
+							'dataType':'json',
+							'this':this,
+							'poly':poly,
+							'geotype':this.geotype,
+							'p':p,
+							'callback':callback,
+							'success':function(d,attr){
+								loaded++;
+								this.geographies[attr.geotype][attr.poly] = d;
+								this.geocount++;
+								if(toload==loaded){
+									this.data[attr.geotype] = new Array(this.data.rows.length);
+									for(i = 0; i < this.data.rows.length; i++){
+										poly = this.data.rows[i][attr.p];
+										this.data[attr.geotype][i] = clone(this.geographies[attr.geotype][poly]);
+										for(j = 0; j < this.data.rows[i].length; j++){
+											v = this.data.rows[i][j];
+											if(parseFloat(v)==v) v = parseFloat(v);
+											this.data[attr.geotype][i].properties[this.data.fields.title[j]] = v;
+										}
+									}
+									if(typeof attr.callback==="function") attr.callback.call(this);
+								}
+							},
+							'error':function(err,attr){
+								console.error('Unable to load '+attr.url);
+							}
+						});
+					}
 				}
 			}
 		}
@@ -368,9 +474,9 @@ S(document).ready(function(){
 		}
 
 		if(!this.map){
-			var mapel = S('#map');
+			var mapel = S('#map output');
 			var mapid = mapel.attr('id');
-			this.map = L.map(mapid,{'scrollWheelZoom':false}).fitBounds([
+			this.map = L.map(mapid,{'scrollWheelZoom':true}).fitBounds([
 				[lat-d, lon-d],
 				[lat+d, lon+d]
 			]);
@@ -426,54 +532,128 @@ S(document).ready(function(){
 			}
 			return popup;
 		}
-		var customicon = makeMarker('#FF6700');
+
 
 		this.geojson = {
 			"type": "FeatureCollection",
 			"features": []
 		}
+		var colour = '#FF6700';
 
-		// Build marker list
-		var markerList = [];
+		if(this.geotype){
+			var _obj,key,geoattr;
+			_obj = this;
+			function getRange(k){
+				var v,i;
+				var min = 1e100;
+				var max = -1e100;
+				for(i = 0; i < _obj.data.rows.length; i++){
+					v = parseFloat(_obj.data.rows[i][k]);
+					if(typeof v==="number" && !isNaN(v)){
+						min = Math.min(min,v);
+						max = Math.max(max,v);
+					}
+				}
+				return {'min':min,'max':max,'key':_obj.data.fields.name[k]};
+			}
+			this.layerselector = [];
+			this.layerprops = {'min':0,'max':1,'key':''};
+			inverse = false;
 
-		for(var i = 0; i < this.data.rows.length; i++){
-			if(this.data.geo[i] && this.data.geo[i].length == 2){
-
-				feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.geo[i] }};
+			geoattr = {
+				'style': function(feature){
+					//console.log(feature,key,_obj);
+					if(feature.geometry.type == "Polygon" || feature.geometry.type == "MultiPolygon"){
+						var val = "";
+						var k = "";
+						if(typeof _obj.layerprops.key==="string") k = _obj.layerprops.key;
+						if(typeof feature.properties[k]==="number") val = feature.properties[k];
+						if(typeof val==="number"){
+							var f = (val-_obj.layerprops.min)/(_obj.layerprops.max - _obj.layerprops.min);
+							if(inverse) f = 1-f;
+							v = (f*0.6 + 0.2);
+						}
+						return { "color": colour, "weight": 0.5, "opacity": 0.65, "fillOpacity": v };
+					}else return { "color": colour };
+				},
+				'onEachFeature': function(feature, layer){
+					var popup =  popuptext(feature,{'this':_obj});
+					if(popup) layer.bindPopup(popup);
+				}
+			};
+			//this.layerselector = [{'title':'Pupils living in LSOA','selected':true},{'title':'Pupils who speak English as an additional language'}];
+			for(var i = 0; i < this.data[this.geotype].length; i++){
+				feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
 				for(var c = 0; c < this.data.rows[i].length; c++){
 					var n = this.data.fields.title[c];
 					if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
-						feature.properties[n] = this.data.rows[i][c];
+						v = this.data.rows[i][c];
+						if(parseFloat(v)==v) v = parseFloat(v);
+						feature.properties[n] = v;
 					}
 				}
 				this.geojson.features.push(feature);
+			}
 
-				// Add marker
-				marker = L.marker([this.data.geo[i][1],this.data.geo[i][0]],{icon: customicon});
-				marker.bindPopup(popuptext(feature));
-				markerList.push(marker);
+			for(var k = 0; k < this.data.fields.format.length; k++){
+				if(this.data.fields.required[k]){
+					if(this.data.fields.format[k]=="integer" || this.data.fields.format[k]=="float"){
+						this.layerselector.push({'title':this.data.fields.name[k]});
+						if(this.layerselector.length==1) this.layerprops = getRange(k);
+					}
+				}
+			}
+
+
+			if(this.map && this.geojson.features.length > 0){
+				if(this.layer) this.map.removeLayer(this.layer);
+			}
+			this.layer = L.geoJSON(this.geojson,geoattr);
+
+		}else{
+
+			var customicon = makeMarker('#FF6700');
+
+			// Build marker list
+			var markerList = [];
+			for(var i = 0; i < this.data.rows.length; i++){
+				if(this.data.coords[i] && this.data.coords[i].length == 2){
+
+					feature = {"type":"Feature","properties":{},"geometry": { "type": "Point", "coordinates": this.data.coords[i] }};
+					for(var c = 0; c < this.data.rows[i].length; c++){
+						var n = this.data.fields.title[c];
+						if(this.data.fields.required[c]==true && this.data.rows[i][c]!="") feature.properties[n] = this.data.rows[i][c];
+					}
+					this.geojson.features.push(feature);
+
+					// Add marker
+					marker = L.marker([this.data.coords[i][1],this.data.coords[i][0]],{icon: customicon});
+					marker.bindPopup(popuptext(feature));
+					markerList.push(marker);
+				}
+			}
+			if(this.map && this.geojson.features.length > 0){
+				if(this.layer) this.map.removeLayer(this.layer);
+
+				// Define a cluster layer
+				this.layer = L.markerClusterGroup({
+					chunkedLoading: true,
+					maxClusterRadius: 70,
+					iconCreateFunction: function (cluster) {
+						var markers = cluster.getAllChildMarkers();
+						return L.divIcon({ html: '<div class="marker-group" style="background-color:#FF6700;color:black">'+markers.length+'</div>', className: '',iconSize: L.point(40, 40) });
+					},
+					// Disable all of the defaults:
+					spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true
+				});
+				// Add marker list to layer
+				this.layer.addLayers(markerList);
 			}
 		}
+		this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
+		this.layer.addTo(this.map);
 
-		if(this.map && this.geojson.features.length > 0){
-			if(this.layer) this.map.removeLayer(this.layer);
 
-			// Define a cluster layer
-			this.layer = L.markerClusterGroup({
-				chunkedLoading: true,
-				maxClusterRadius: 70,
-				iconCreateFunction: function (cluster) {
-					var markers = cluster.getAllChildMarkers();
-					return L.divIcon({ html: '<div class="marker-group" style="background-color:#FF6700;color:black">'+markers.length+'</div>', className: '',iconSize: L.point(40, 40) });
-				},
-				// Disable all of the defaults:
-				spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true
-			});
-			// Add marker list to layer
-			this.layer.addLayers(markerList);
-			this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
-			this.layer.addTo(this.map);
-		}
 		
 		txt = JSON.stringify(this.geojson);
 		
@@ -489,8 +669,6 @@ S(document).ready(function(){
 
 		S('#filesize').html('<p>File size: '+niceSize(txt.length)+'</p>');
 
-		S('.step2').removeClass('processing').addClass('checked');
-
 		return this;
 	}
 	
@@ -504,7 +682,7 @@ S(document).ready(function(){
 		var mx = Math.min(this.data.rows.length,this.maxrowstable);
 
 		if(S('#output-table').length==0){
-			S('#contents').html('<p id="about-table"></p><div id="output-table" class="table-holder"><table><thead></thead><tbody></tbody></table></div><output id="map"></output>');
+			S('#table output').html('<p id="about-table"></p><div id="output-table" class="table-holder"><table><thead></thead><tbody></tbody></table></div>');
 
 
 			thead += '<tr><th>Title:</th>';
@@ -528,12 +706,13 @@ S(document).ready(function(){
 
 			S('#output-table thead').html(thead);
 
-			S('#contents select').on('change',{me:this},function(e,i){
+			S('#output-table select').on('change',{me:this},function(e,i){
 				var el = document.getElementById(e.currentTarget.id);
 				var value = el.options[el.selectedIndex].value;
+				console.log('select change',e.data.me,e.currentTarget.id,value);
 				e.data.me.update(e.currentTarget.id,value);
 			});
-			S('#contents input').on('change',{me:this},function(e,i){
+			S('#output-table input').on('change',{me:this},function(e,i){
 				e.data.me.update(e.currentTarget.id,e.currentTarget.value);
 			});
 
@@ -543,7 +722,10 @@ S(document).ready(function(){
 
 
 		for(var i = 0; i < mx; i++){
-			tbody += '<tr'+(this.data.geo[i] && this.data.geo[i].length==2 ? '':' class="nogeo"')+'><td class="rn">'+(i+1)+'</td>';
+			cls = "";
+			if(this.data.coords && this.data.coords[i] && this.data.coords[i].length!=2) cls = ' class="nogeo"';
+			if(this.geotype && this.data[this.geotype] && this.data[this.geotype][i] && !this.data[this.geotype][i].geometry) cls = ' class="nogeo"';
+			tbody += '<tr'+cls+'><td class="rn">'+(i+1)+'</td>';
 			for(var c = 0; c < this.data.rows[i].length; c++){
 				tbody += '<td '+(this.data.fields.format[c] == "float" || this.data.fields.format[c] == "integer" || this.data.fields.format[c] == "year" || this.data.fields.format[c] == "date" || this.data.fields.format[c] == "datetime" ? ' class="n"' : '')+'>'+this.data.rows[i][c]+'</td>';
 			}
@@ -565,10 +747,11 @@ S(document).ready(function(){
 		if(row == "required") this.data.fields.required[col] = (value.toLowerCase() == "true" ? true : false);
 
 		// Go through form elements and update the format/constraints
-		if(row == "title") this.findGeography();
-		
-		this.buildTable();
-		this.buildMap();
+		if(row == "title" || row == "required"){
+			this.findGeography(function(){
+				this.buildMap();
+			});
+		}
 
 		return this;
 	}
@@ -600,7 +783,6 @@ S(document).ready(function(){
 			document.body.appendChild(dl);
 		}
 		dl.click();
-		S('.step3').addClass('checked');
 
 		return this;
 	}
@@ -622,7 +804,7 @@ S(document).ready(function(){
 
 				this.file = f.name;
 				// ('+ (f.type || 'n/a')+ ')
-				output += '<div><strong>'+ (f.name)+ '</strong> - ' + niceSize(f.size) + ', last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
+				output += '<div class="file-details"><strong>'+ (f.name)+ '</strong> - ' + niceSize(f.size) + ', last modified: ' + (f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a') + '</div>';
 
 				// DEPRECATED as not reliable // Only process csv files.
 				//if(!f.type.match('text/csv')) continue;
@@ -654,8 +836,8 @@ S(document).ready(function(){
 			}
 			//document.getElementById('list').innerHTML = '<p>File loaded:</p><ul>' + output.join('') + '</ul>';
 			S('#drop_zone').append(output).addClass('loaded');
-			S('.step1').addClass('checked');
-			S('.step2').addClass('processing');
+			//S('.step1').addClass('checked');
+			S('#results').css({'display':''});
 		}
 		return this;
 	}

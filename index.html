@@ -14,33 +14,27 @@
 	<meta name="twitter:description" property="og:description" content="Convert a CSV file with simple geography into a GeoJSON point file">
 	<meta name="twitter:image" property="og:image" content="https://odileeds.org/resources/images/odileeds.png">
 	<style>
-	#map { 
-		height: 620px;
+	#map output, textarea { 
+		height: 500px;
 		display: block;
 		width: 100%;
 	}
 	.leaflet-popup-content h3 { margin-top: 0px; }
-	textarea, #map, td, th, table {
-		border: 1px solid #cccccc;
-	}
+	textarea, #map output, td, th, table { border: 1px solid #cccccc; }
 	.dropzone {
 		border: 2px dashed #999999;
-		border-radius: 5px;
+		background: white;
+		border-radius: 0.5em;
 		color: #333333;
-		padding: 25px;
+		padding: 2em;
 		text-align: center;
 		position: relative;
 	}
-	.dropzone.loaded {
-		border: 2px solid #333333;
-		color: #333333;
-	}
-	.dropzone.loaded .helpertext {
-		display: none;
-	}
-	.dropzone.drop {
-		background-color: #ddd;
-	}
+	.dropzone .file-details { display: none; }
+	.dropzone.loaded { border: 2px solid #333333; color: #333333; }
+	.dropzone.loaded .helpertext { display: none; }
+	.dropzone.loaded .file-details { display: block; }
+	.dropzone.drop { background-color: #ddd; }
 	.dropzone input {
 		position: absolute;
 		left: 0px;
@@ -56,8 +50,8 @@
 		overflow-x: auto;
 		width: 100%;
 	}
-	#schema textarea, #schema_file { margin-bottom: 16px; }
 	h2, h3 { margin-top: 48px; }
+	h2:first-child { margin-top: 0px; }
 	table {
 		max-height: 400px; overflow: scroll; 
 		border-collapse: collapse;
@@ -99,11 +93,7 @@
 	td.number, th.number {
 		text-align: center;
 	}
-	textarea {
-		width: 100%;
-		min-height: 15em;
-		padding: 6px;
-	}
+	textarea { padding: 0.5em; }
 	table .constraint label { width: auto; display: inline-block; }
 	table .constraint select { width: auto; display: inline-block; }
 	table button {
@@ -159,67 +149,66 @@
 	.marker-cluster-small {
 		background-color: rgba(181, 226, 140, 0.6);
 	}
-	.marker-cluster-small div {
-		background-color: rgba(110, 204, 57, 0.6);
-	}
-	.marker-cluster-medium {
-		background-color: rgba(241, 211, 87, 0.6);
-		}
-	.marker-cluster-medium div {
-		background-color: rgba(240, 194, 12, 0.6);
-		}
+	.marker-cluster-small div { background-color: rgba(110, 204, 57, 0.6);}
+	.marker-cluster-medium { background-color: rgba(241, 211, 87, 0.6); }
+	.marker-cluster-medium div { background-color: rgba(240, 194, 12, 0.6); }
+	.marker-cluster-large { background-color: rgba(253, 156, 115, 0.6); }
+	.marker-cluster-large div { background-color: rgba(241, 128, 23, 0.6); }
 
-	.marker-cluster-large {
-		background-color: rgba(253, 156, 115, 0.6);
-		}
-	.marker-cluster-large div {
-		background-color: rgba(241, 128, 23, 0.6);
-		}
+	/* IE 6-8 fallback colors */
+	.leaflet-oldie .marker-cluster-small { background-color: rgb(181, 226, 140); }
+	.leaflet-oldie .marker-cluster-small div { background-color: rgb(110, 204, 57); }
+	.leaflet-oldie .marker-cluster-medium { background-color: rgb(241, 211, 87); }
+	.leaflet-oldie .marker-cluster-medium div { background-color: rgb(240, 194, 12); }
+	.leaflet-oldie .marker-cluster-large { background-color: rgb(253, 156, 115); }
+	.leaflet-oldie .marker-cluster-large div { background-color: rgb(241, 128, 23); }
 
-		/* IE 6-8 fallback colors */
-	.leaflet-oldie .marker-cluster-small {
-		background-color: rgb(181, 226, 140);
-		}
-	.leaflet-oldie .marker-cluster-small div {
-		background-color: rgb(110, 204, 57);
-		}
-
-	.leaflet-oldie .marker-cluster-medium {
-		background-color: rgb(241, 211, 87);
-		}
-	.leaflet-oldie .marker-cluster-medium div {
-		background-color: rgb(240, 194, 12);
-		}
-
-	.leaflet-oldie .marker-cluster-large {
-		background-color: rgb(253, 156, 115);
-		}
-	.leaflet-oldie .marker-cluster-large div {
-		background-color: rgb(241, 128, 23);
-	}
-
-	.marker-cluster {
-		background-clip: padding-box;
-		border-radius: 20px;
-		}
+	.marker-cluster { background-clip: padding-box; border-radius: 20px; }
 	.marker-cluster div {
 		width: 30px;
 		height: 30px;
 		margin-left: 5px;
 		margin-top: 5px;
-
 		text-align: center;
 		border-radius: 15px;
 		font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
-		}
-	.marker-cluster span {
-		line-height: 30px;
-		}
+	}
+	.marker-cluster span { line-height: 30px; }
 	#map .marker-group {
 		border-radius: 100%;
 		text-align: center;
 		line-height: 40px;
 	}
+	code {
+		font-family: monospace;
+		border: 1px solid #999;
+		background: #dfdfdf;
+		padding: 0.25em;
+		margin: 0 2px;
+	}
+	ol li { line-height: 1.75em; }
+	#validation_form > .holder { padding: 2em 1em; }
+	#main ul.tabs {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		grid-auto-rows: auto;
+		grid-gap: 2px;
+		list-style: none;
+		order: 1;
+		margin: 0px;
+		padding: 0px;
+		margin-bottom: 0;
+	}
+	#save { font-size: 1.25em; border: 1px solid black; margin-bottom: 0.75em;}
+	#results > .holder:first-child { padding: 0em 1em 0em 1em; }
+	#main .holder.tab-menu { padding: 0em 1em 0em 1em; }
+	#main ul.tabs a { padding: 0.5em 1em; display: block; text-decoration: none; }
+	#main .panel .holder { padding: 2em 1em; }
+	#results .tabs .b4-bg:hover, #results .tabs .b4-bg:focus { background-color: #dfdfdf; color: black!important; }
+	#results .tabs .b6-bg:hover, #results .tabs .b6-bg:focus { background-color: white; color: black!important; }
+	footer h3 { margin-top: 0px;}
+	footer p { margin-top: 1em; }
+	footer a, footer a:visited { color: inherit; }
 	</style>
 	<script type="text/javascript" src="resources/stuquery.js"></script>
 	<script type="text/javascript" src="resources/geotools2.js"></script>
@@ -245,45 +234,71 @@
 			</div>
 		</div>
 
-		<div class="holder">
-			<form id="validation_form" method="post" enctype="multipart/form-data" action="http://csvlint.io/package" accept-charset="UTF-8">
-				<input id="no_js" type="hidden" name="no_js" value="1" />
-				<input type="hidden" value="✓" name="utf8">
-				<input type="hidden" name="urls[]" value="" />
-				<input type="hidden" name="urls[]" value="" />
-				<input type="hidden" name="files[]" value="" />
+		<form id="validation_form" method="post" enctype="multipart/form-data" action="http://csvlint.io/package" accept-charset="UTF-8">
+			<div class="holder">
+					<input id="no_js" type="hidden" name="no_js" value="1" />
+					<input type="hidden" value="✓" name="utf8">
+					<input type="hidden" name="urls[]" value="" />
+					<input type="hidden" name="urls[]" value="" />
+					<input type="hidden" name="files[]" value="" />
 
-				<p>Generate a GeoJSON file from a CSV file in three easy steps. The CSV file will need to contain two columns that contain the coordinates.</p>
+					<p>Generate a GeoJSON file from a <a href="http://csvlint.io/">valid CSV file</a> containing either:</p>
+					<ol>
+						<li><strong>Coordinates:</strong> two columns titled <code>Latitude</code>/<code>Longitude</code>, <code>lat</code>/<code>lon</code>, <code>geox</code>/<code>geoy</code> or <code>Easting</code>/<code>Northing</code> - WGS84/OS Grid Ref</li>
+						<li><strong>LSOA:</strong> one column titled <code>LSOA11CD</code> or <code>LSOA</code> containing the 2011 ONS LSOA code<sup>[<a href="#privacy">note</a>]</li>
+					</ol>
 
-				<h2 class="step1">1. Select a CSV file</h2>
-				<p>We'll only work with it within your browser so you don't need to worry about anything getting uploaded. You could <a href="http://csvlint.io/">check it is a valid CSV file</a> first with this handy tool from ODI HQ.</p>
-				<div id="drop_zone" class="dropzone block">
-					<div class="helpertext">
-						Drop CSV file here (or click to browse files)<br />
-						<input id="standard_files" class="fileselect" type="file" title="browse" name="files[]" multiple="multiple" accept=".csv, .tsv, .txt, .zip">
+					<div id="drop_zone" class="dropzone">
+						<div class="helpertext">
+							Drop CSV file here (or click to browse files)<br />
+							<input id="standard_files" class="fileselect" type="file" title="browse" name="files[]" multiple="multiple" accept=".csv, .tsv, .txt, .zip">
+						</div>
+					</div>
+			</div>
+
+			<div id="results">
+			
+				<div class="holder">
+					<p style="text-align:center;font-size:1em;"><button type="button" id="save" class="seasonal">Save as GeoJSON</button></p>
+				</div>
+				<div class="holder tab-menu">
+					<ul class="tabs">
+						<li><a href="#table">Table</a></li>
+						<li><a href="#map">Map</a></li>
+						<li><a href="#geojson">GeoJSON</a></li>
+					</ul>
+				</div>
+
+				<div id="table" class="panel b6-bg">
+					<div class="holder">
+						<p>If we've not been able to find the geography columns you may need to rename your column headings in the table so we can find them.</p>
+						<output id="contents"></output>
 					</div>
 				</div>
-				<output id="list"></output>
-
-				<h2 class="step2">2. Check the auto-detection of geography</h2>
-				<p>We'll make a guess at the columns that contain the geography. We'll look for "Latitude" and "Longitude". If those don't exist we'll look for "lat/lon", "GeoX/GeoY", or "Easting/Northing" pairs. Your coordinates should either be in WGS84 coordinates or OS Grid References. If we've not been able to find the geography columns you may need to rename your column headings in the table so we can find them.</p>
-				<output id="contents"></output>
 				
-
-				<h2 class="step3">3. Save the GeoJSON file</h2>
-				<output id="geojson">
-					<textarea></textarea>
-					<div id="filesize"></div>
-				</output>
-				<p><button type="button" id="save" class="seasonal">Save as GeoJSON</button> or copy and paste the output into a file with a .geojson extension.</p>
-
-			</form>
-		</div>
+				<div id="map" class="panel b6-bg">
+					<div class="holder">
+						<output id="map-contents"></output>
+					</div>
+				</div>
+					
+				<div id="geojson" class="panel b6-bg">
+					<div class="holder">
+						<output id="geojson">
+							<textarea></textarea>
+							<div id="filesize"></div>
+						</output>
+					</div>
+				</div>
+			</div>
+		</form>
 	</div>
 
 	<footer class="b1-bg">
 		<div class="holder">
-				Created by Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2018. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.
+			<h3 id="notes">Notes</h3>
+			<p>If your file contains coordinates (WGC84 or OSGB86) no data is sent from this page. If your file is LSOA-based, this page will have to make a series of requests to the server for the polygons for each LSOA in your dataset. This means the server gets to know which LSOAs are in your data. Please don't add LSOA-based data if this is a problem (or download the repository and use a local copy). If your file contains a huge number of LSOAs your browser may struggle.</p>
+			<p>Credit: Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2020. MIT Licence. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.</p>
 		</div>
 	</footer>
 </body>
