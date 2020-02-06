@@ -225,6 +225,9 @@ S(document).ready(function(){
 
 		// If we provided a filename we load that now
 		if(file) S().ajax(file,{'complete':this.parseCSV,'this':this,'cache':false});
+		
+		// Hide the loader
+		S('#loader').css({'display':'none'});
 
 		// When the user focuses on the schema output, it all gets selected
 		S('#schema textarea').on('focus',function(){
@@ -321,8 +324,12 @@ S(document).ready(function(){
 		this.data = CSV2JSON(data,1);
 		this.records = this.data.rows.length; 
 
+		this.loading();
 		// Work out the geography of the points
 		this.findGeography(function(){
+			
+			this.loaded();
+
 			// Construct the HTML table
 			this.buildTable()
 
@@ -418,6 +425,7 @@ S(document).ready(function(){
 				for(poly in polys) toload++;
 				var _obj = this;
 				function done(p,geotype,callback){
+					console.log('done');
 					_obj.data[geotype] = new Array(_obj.data.rows.length);
 					_obj.geocount = 0;
 					for(i = 0; i < _obj.data.rows.length; i++){
@@ -471,6 +479,7 @@ S(document).ready(function(){
 				if(typeof callback==="function") callback.call(this);
 			}
 		}
+		console.log('end find');
 
 		return this;
 	}
@@ -781,7 +790,12 @@ S(document).ready(function(){
 		}
 		if(html) html = '<ol>'+html+'</ol>';
 		S('#messages output').html(html);
-		S('.nmessage').html(warnings > 0 ? ' (️'+this.messages.length+' '+"⚠️"+')' : '');
+		if(warnings > 0){
+			S('.nmessage').html("⚠️"+' '+this.messages.length);
+			S('.nmessage').parent().css({'display':''});
+		}else{
+			S('.nmessage').parent().css({'display':'none'});
+		}
 		return this;
 	}
 
@@ -797,7 +811,9 @@ S(document).ready(function(){
 
 		// Go through form elements and update the format/constraints
 		if(row == "title" || row == "required"){
+			this.loading();
 			this.findGeography(function(){
+				this.loaded();
 				this.buildTable();
 				this.buildMap();
 				this.buildMessages();
@@ -806,7 +822,17 @@ S(document).ready(function(){
 
 		return this;
 	}
-			
+
+	Converter.prototype.loading = function(){
+		S('#loader').css({'display':''});
+		return this;
+	}
+	
+	Converter.prototype.loaded = function(){
+		S('#results').css({'display':''});
+		S('#loader').css({'display':'none'});
+		return this;
+	}
 	Converter.prototype.save = function(){
 
 		// Bail out if there is no Blob function
@@ -886,9 +912,7 @@ S(document).ready(function(){
 				reader.readAsText(blob);
 			}
 			//document.getElementById('list').innerHTML = '<p>File loaded:</p><ul>' + output.join('') + '</ul>';
-			S('#drop_zone').append(output).addClass('loaded');
-			//S('.step1').addClass('checked');
-			S('#results').css({'display':''});
+			S('#drop_zone').append(output).addClass('loaded');			
 		}
 		return this;
 	}
