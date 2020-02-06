@@ -425,7 +425,6 @@ S(document).ready(function(){
 				for(poly in polys) toload++;
 				var _obj = this;
 				function done(p,geotype,callback){
-					console.log('done');
 					_obj.data[geotype] = new Array(_obj.data.rows.length);
 					_obj.geocount = 0;
 					for(i = 0; i < _obj.data.rows.length; i++){
@@ -479,7 +478,6 @@ S(document).ready(function(){
 				if(typeof callback==="function") callback.call(this);
 			}
 		}
-		console.log('end find');
 
 		return this;
 	}
@@ -592,7 +590,6 @@ S(document).ready(function(){
 
 			geoattr = {
 				'style': function(feature){
-					//console.log(feature,key,_obj);
 					if(feature.geometry.type == "Polygon" || feature.geometry.type == "MultiPolygon"){
 						var val = "";
 						var k = "";
@@ -748,7 +745,6 @@ S(document).ready(function(){
 			S('#output-table select').on('change',{me:this},function(e,i){
 				var el = document.getElementById(e.currentTarget.id);
 				var value = el.options[el.selectedIndex].value;
-				console.log('select change',e.data.me,e.currentTarget.id,value);
 				e.data.me.update(e.currentTarget.id,value);
 			});
 			S('#output-table input').on('change',{me:this},function(e,i){
