@@ -220,7 +220,8 @@ S(document).ready(function(){
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 
-		this.geographies = {'LSOA':{}};
+		this.geographies = {'LSOA11CD':{}};
+		this.messages = [];
 
 		// If we provided a filename we load that now
 		if(file) S().ajax(file,{'complete':this.parseCSV,'this':this,'cache':false});
@@ -274,6 +275,7 @@ S(document).ready(function(){
 		delete this.data;
 		delete this.records;
 		delete this.file;
+		this.messages = [];
 		S('.dropzone .file-details').html("");
 	}
 
@@ -326,6 +328,8 @@ S(document).ready(function(){
 
 			// Construct the map
 			this.buildMap();
+			
+			this.buildMessages();
 
 			selectPanel('#table');
 		});
@@ -399,7 +403,7 @@ S(document).ready(function(){
 			for(var c = 0; c < this.data.fields.title.length; c++){
 				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA11CD")){
 					p = c;
-					this.geotype = "LSOA";
+					this.geotype = "LSOA11CD";
 				}
 			}
 			if(p >= 0 && this.geotype && this.geographies[this.geotype]){
@@ -416,6 +420,20 @@ S(document).ready(function(){
 					// Immediately call the callback
 					if(typeof callback==="function") callback.call(this);
 				}else{
+					var _obj = this;
+					function done(p,geotype,callback){
+						_obj.data[geotype] = new Array(_obj.data.rows.length);
+						for(i = 0; i < _obj.data.rows.length; i++){
+							poly = _obj.data.rows[i][p];
+							_obj.data[geotype][i] = clone(_obj.geographies[geotype][poly]);
+							for(j = 0; j < _obj.data.rows[i].length; j++){
+								v = _obj.data.rows[i][j];
+								if(parseFloat(v)==v) v = parseFloat(v);
+								_obj.data[geotype][i].properties[_obj.data.fields.title[j]] = v;
+							}
+						}
+						if(typeof callback==="function") callback.call(_obj);
+					}
 					// Load every LSOA
 					for(poly in polys){
 						S().ajax(polys[poly],{
@@ -427,24 +445,18 @@ S(document).ready(function(){
 							'callback':callback,
 							'success':function(d,attr){
 								loaded++;
+								if(!this.geographies[attr.geotype]) this.geographies[attr.geotype] = {};
 								this.geographies[attr.geotype][attr.poly] = d;
 								this.geocount++;
-								if(toload==loaded){
-									this.data[attr.geotype] = new Array(this.data.rows.length);
-									for(i = 0; i < this.data.rows.length; i++){
-										poly = this.data.rows[i][attr.p];
-										this.data[attr.geotype][i] = clone(this.geographies[attr.geotype][poly]);
-										for(j = 0; j < this.data.rows[i].length; j++){
-											v = this.data.rows[i][j];
-											if(parseFloat(v)==v) v = parseFloat(v);
-											this.data[attr.geotype][i].properties[this.data.fields.title[j]] = v;
-										}
-									}
-									if(typeof attr.callback==="function") attr.callback.call(this);
-								}
+								if(toload==loaded) done(attr.p,attr.geotype,attr.callback);
 							},
 							'error':function(err,attr){
+								// It didn't load so we'll add it to the tally
+								loaded++;
 								console.error('Unable to load '+attr.url);
+								this.messages.push({'type':'warning','title':'<em>'+attr.poly+'</em> does not appear to be a valid '+attr.geotype});
+								this.geographies[attr.geotype][attr.poly] = {'properties':{}};
+								if(toload==loaded) done(attr.p,attr.geotype,attr.callback);
 							}
 						});
 					}
@@ -654,7 +666,7 @@ S(document).ready(function(){
 		}
 		
 		if(this.layer){
-			this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
+			if(this.layer.getBounds()) this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
 			this.layer.addTo(this.map);
 		}
 
@@ -723,8 +735,7 @@ S(document).ready(function(){
 
 		}
 
-		S('#about-table').html("We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' <strong>'+this.geocount+' records appear to have geography</strong>.':''));
-
+		S('#about-table').html("We loaded <em>"+this.records+" records</em> (only showing the first "+mx+" in the table)."+(this.geocount < this.records ? ' <strong>'+this.geocount+'/'+this.records+' records appear to have valid geography</strong>.':''));
 
 		for(var i = 0; i < mx; i++){
 			cls = "";
@@ -738,6 +749,26 @@ S(document).ready(function(){
 		}
 		S('#output-table tbody').html(tbody);
 
+		return this;
+	}
+
+	// Construct the HTML table
+	Converter.prototype.buildMessages = function(){
+	
+		var html = "";
+		var i;
+		var warnings = 0;
+		for(i = 0; i < this.messages.length; i++){
+			sym = "";
+			if(this.messages[i]['type']=="warning"){
+				sym = "⚠️";
+				warnings++;
+			}
+			html += '<li>'+sym+' '+this.messages[i].title+'</li>';
+		}
+		if(html) html = '<ol>'+html+'</ol>';
+		S('#messages output').html(html);
+		S('.nmessage').html(warnings > 0 ? ' (️'+this.messages.length+' ⚠)' : '');
 		return this;
 	}
 
@@ -756,6 +787,7 @@ S(document).ready(function(){
 			this.findGeography(function(){
 				this.buildTable();
 				this.buildMap();
+				this.buildMessages();
 			});
 		}
 

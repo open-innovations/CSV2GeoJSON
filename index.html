@@ -190,7 +190,7 @@
 	#validation_form > .holder { padding: 2em 1em; }
 	#main ul.tabs {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(4, 1fr);
 		grid-auto-rows: auto;
 		grid-gap: 2px;
 		list-style: none;
@@ -204,6 +204,7 @@
 	#main .holder.tab-menu { padding: 0em 1em 0em 1em; }
 	#main ul.tabs a { padding: 0.5em 1em; display: block; text-decoration: none; }
 	#main .panel .holder { padding: 2em 1em; }
+	#messages ol { list-style: none; margin-left: 0px; }
 	#results .tabs .b4-bg:hover, #results .tabs .b4-bg:focus { background-color: #dfdfdf; color: black!important; }
 	#results .tabs .b6-bg:hover, #results .tabs .b6-bg:focus { background-color: white; color: black!important; }
 	footer h3 { margin-top: 0px;}
@@ -266,6 +267,7 @@
 						<li><a href="#table">Table</a></li>
 						<li><a href="#map">Map</a></li>
 						<li><a href="#geojson">GeoJSON</a></li>
+						<li><a href="#messages">Messages<span class="nmessage"></span></a></li>
 					</ul>
 				</div>
 
@@ -284,9 +286,16 @@
 					
 				<div id="geojson" class="panel b6-bg">
 					<div class="holder">
-						<output id="geojson">
+						<output>
 							<textarea></textarea>
 							<div id="filesize"></div>
+						</output>
+					</div>
+				</div>
+
+				<div id="messages" class="panel b6-bg">
+					<div class="holder">
+						<output>
 						</output>
 					</div>
 				</div>
