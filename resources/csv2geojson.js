@@ -416,24 +416,32 @@ S(document).ready(function(){
 				var toload = 0;
 				var loaded = 0;
 				for(poly in polys) toload++;
+				var _obj = this;
+				function done(p,geotype,callback){
+					_obj.data[geotype] = new Array(_obj.data.rows.length);
+					_obj.geocount = 0;
+					for(i = 0; i < _obj.data.rows.length; i++){
+						poly = _obj.data.rows[i][p];
+						// We don't have a geometry property
+						if(!_obj.geographies[geotype][poly].geometry){
+							_obj.messages.push({'type':'warning','title':'<em>'+poly+'</em> does not appear to be a valid '+geotype});
+						}else{
+							_obj.geocount++;
+						}
+
+						_obj.data[geotype][i] = clone(_obj.geographies[geotype][poly]);
+						for(j = 0; j < _obj.data.rows[i].length; j++){
+							v = _obj.data.rows[i][j];
+							if(parseFloat(v)==v) v = parseFloat(v);
+							_obj.data[geotype][i].properties[_obj.data.fields.title[j]] = v;
+						}
+					}
+					if(typeof callback==="function") callback.call(_obj);
+				}
 				if(toload == 0){
 					// Immediately call the callback
-					if(typeof callback==="function") callback.call(this);
+					done(p,this.geotype,callback);
 				}else{
-					var _obj = this;
-					function done(p,geotype,callback){
-						_obj.data[geotype] = new Array(_obj.data.rows.length);
-						for(i = 0; i < _obj.data.rows.length; i++){
-							poly = _obj.data.rows[i][p];
-							_obj.data[geotype][i] = clone(_obj.geographies[geotype][poly]);
-							for(j = 0; j < _obj.data.rows[i].length; j++){
-								v = _obj.data.rows[i][j];
-								if(parseFloat(v)==v) v = parseFloat(v);
-								_obj.data[geotype][i].properties[_obj.data.fields.title[j]] = v;
-							}
-						}
-						if(typeof callback==="function") callback.call(_obj);
-					}
 					// Load every LSOA
 					for(poly in polys){
 						S().ajax(polys[poly],{
@@ -447,14 +455,12 @@ S(document).ready(function(){
 								loaded++;
 								if(!this.geographies[attr.geotype]) this.geographies[attr.geotype] = {};
 								this.geographies[attr.geotype][attr.poly] = d;
-								this.geocount++;
 								if(toload==loaded) done(attr.p,attr.geotype,attr.callback);
 							},
 							'error':function(err,attr){
 								// It didn't load so we'll add it to the tally
 								loaded++;
 								console.error('Unable to load '+attr.url);
-								this.messages.push({'type':'warning','title':'<em>'+attr.poly+'</em> does not appear to be a valid '+attr.geotype});
 								this.geographies[attr.geotype][attr.poly] = {'properties':{}};
 								if(toload==loaded) done(attr.p,attr.geotype,attr.callback);
 							}
@@ -553,6 +559,7 @@ S(document).ready(function(){
 			"features": []
 		}
 		var colour = '#FF6700';
+		var added = 0;
 
 		if(this.geotype){
 			var _obj,key,geoattr;
@@ -595,18 +602,23 @@ S(document).ready(function(){
 					if(popup) layer.bindPopup(popup);
 				}
 			};
-			//this.layerselector = [{'title':'Pupils living in LSOA','selected':true},{'title':'Pupils who speak English as an additional language'}];
-			for(var i = 0; i < this.data[this.geotype].length; i++){
-				feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
-				for(var c = 0; c < this.data.rows[i].length; c++){
-					var n = this.data.fields.title[c];
-					if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
-						v = this.data.rows[i][c];
-						if(parseFloat(v)==v) v = parseFloat(v);
-						feature.properties[n] = v;
+			if(this.data[this.geotype]){
+				//this.layerselector = [{'title':'Pupils living in LSOA','selected':true},{'title':'Pupils who speak English as an additional language'}];
+				for(var i = 0; i < this.data[this.geotype].length; i++){
+					feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
+					for(var c = 0; c < this.data.rows[i].length; c++){
+						var n = this.data.fields.title[c];
+						if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
+							v = this.data.rows[i][c];
+							if(parseFloat(v)==v) v = parseFloat(v);
+							feature.properties[n] = v;
+						}
 					}
+					this.geojson.features.push(feature);
+					added++;
 				}
-				this.geojson.features.push(feature);
+			}else{
+				this.messages.push({'type':'warning','title':'Geotype ('+this.geotype+') error'});
 			}
 
 			for(var k = 0; k < this.data.fields.format.length; k++){
@@ -639,6 +651,7 @@ S(document).ready(function(){
 						if(this.data.fields.required[c]==true && this.data.rows[i][c]!="") feature.properties[n] = this.data.rows[i][c];
 					}
 					this.geojson.features.push(feature);
+					added++;
 
 					// Add marker
 					marker = L.marker([this.data.coords[i][1],this.data.coords[i][0]],{icon: customicon});
@@ -666,7 +679,7 @@ S(document).ready(function(){
 		}
 		
 		if(this.layer){
-			if(this.layer.getBounds()) this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
+			if(added > 0) this.map.fitBounds(this.layer.getBounds(),{'padding':[8,8]});
 			this.layer.addTo(this.map);
 		}
 
@@ -768,7 +781,7 @@ S(document).ready(function(){
 		}
 		if(html) html = '<ol>'+html+'</ol>';
 		S('#messages output').html(html);
-		S('.nmessage').html(warnings > 0 ? ' (️'+this.messages.length+' ⚠)' : '');
+		S('.nmessage').html(warnings > 0 ? ' (️'+this.messages.length+' '+"⚠️"+')' : '');
 		return this;
 	}
 
