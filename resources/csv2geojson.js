@@ -220,7 +220,7 @@ S(document).ready(function(){
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 
-		this.geographies = {'LSOA11CD':{}};
+		this.geographies = {'LSOA11CD':{},'LSOA01CD':{},'WD19CD':{},'PCON17CD':{},'LAD19CD':{}};
 		this.messages = [];
 
 		// If we provided a filename we load that now
@@ -411,6 +411,18 @@ S(document).ready(function(){
 				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA11CD")){
 					p = c;
 					this.geotype = "LSOA11CD";
+				}else if(p < 0 && this.data.fields.title[c].toUpperCase() == "LSOA01CD"){
+					p = c;
+					this.geotype = "LSOA01CD";
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "WARD" || this.data.fields.title[c].toUpperCase() == "WD19CD")){
+					p = c;
+					this.geotype = "WD19CD";
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LOCAL AUTHORITY" || this.data.fields.title[c].toUpperCase() == "LAD19CD")){
+					p = c;
+					this.geotype = "LAD19CD";
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "CONSTITUENCY" || this.data.fields.title[c].toUpperCase() == "PCON17CD")){
+					p = c;
+					this.geotype = "PCON17CD";
 				}
 			}
 			if(p >= 0 && this.geotype && this.geographies[this.geotype]){
@@ -449,7 +461,7 @@ S(document).ready(function(){
 					// Immediately call the callback
 					done(p,this.geotype,callback);
 				}else{
-					// Load every LSOA
+					// Load every geography
 					for(poly in polys){
 						S().ajax(polys[poly],{
 							'dataType':'json',
@@ -609,7 +621,6 @@ S(document).ready(function(){
 				}
 			};
 			if(this.data[this.geotype]){
-				//this.layerselector = [{'title':'Pupils living in LSOA','selected':true},{'title':'Pupils who speak English as an additional language'}];
 				for(var i = 0; i < this.data[this.geotype].length; i++){
 					feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
 					for(var c = 0; c < this.data.rows[i].length; c++){
@@ -788,9 +799,10 @@ S(document).ready(function(){
 		S('#messages output').html(html);
 		if(warnings > 0){
 			S('.nmessage').html("⚠️"+' '+this.messages.length);
-			S('.nmessage').parent().css({'display':''});
+			S('.nmessage').parent().parent().css({'display':''});
 		}else{
-			S('.nmessage').parent().css({'display':'none'});
+			S('.nmessage').html("");
+			S('.nmessage').parent().parent().css({'display':'none'});
 		}
 		return this;
 	}
@@ -821,6 +833,8 @@ S(document).ready(function(){
 
 	Converter.prototype.loading = function(){
 		S('#loader').css({'display':''});
+		// Clear any existing messages
+		this.messages = [];
 		return this;
 	}
 	
