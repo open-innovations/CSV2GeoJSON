@@ -52,6 +52,7 @@
 	}
 	h2, h3 { margin-top: 48px; }
 	h2:first-child { margin-top: 0px; }
+	h4 { font-size: 1.2em; margin-top: 1em; margin-bottom: 0; }
 	table {
 		max-height: 400px; overflow: scroll; 
 		border-collapse: collapse;
@@ -182,7 +183,6 @@
 	code {
 		font-family: monospace;
 		border: 1px solid #999;
-		background: #dfdfdf;
 		padding: 0.25em;
 		margin: 0 2px;
 	}
@@ -243,10 +243,7 @@
 					<input type="hidden" name="urls[]" value="" />
 					<input type="hidden" name="files[]" value="" />
 
-					<p>Generate a GeoJSON file from a <a href="http://csvlint.io/">valid CSV file</a> containing either:</p>
-					<ol>
-						<li><strong>Coordinates:</strong> two columns titled <code>Latitude</code>/<code>Longitude</code>, <code>lat</code>/<code>lon</code>, <code>geox</code>/<code>geoy</code> or <code>Easting</code>/<code>Northing</code> - WGS84/OS Grid Ref</li>
-						<li><strong>LSOA:</strong> one column titled <code>LSOA11CD</code> or <code>LSOA</code> containing the 2011 ONS LSOA code<sup>[<a href="#privacy">note</a>]</li>
+					<p>Create a GeoJSON file from a <a href="http://csvlint.io/">valid CSV file</a> that contains columns for <strong>Latitude/Longitude</strong> (WGS84), <strong>OS Grid References</strong>, or <strong>LSOA</strong><sup>[<a href="#privacy">note</a>]</li>
 					</ol>
 
 					<div id="drop_zone" class="dropzone">
@@ -306,8 +303,13 @@
 	<footer class="b1-bg">
 		<div class="holder">
 			<h3 id="notes">Notes</h3>
-			<p>If your file contains coordinates (WGC84 or OSGB86) no data is sent from this page. If your file is LSOA-based, this page will have to make a series of requests to the server for the polygons for each LSOA in your dataset. This means the server gets to know which LSOAs are in your data. Please don't add LSOA-based data if this is a problem (or download the repository and use a local copy). If your file contains a huge number of LSOAs your browser may struggle.</p>
-			<p>Credit: Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2020. MIT Licence. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.</p>
+			<h4>Geography</h4>
+			<p>Detecting geography requires us to spot column headings in your CSV file. That means the columns have to be things that we expect. For latitude/longitude (WGS84) you'll need two columns titled <code>Latitude</code>/<code>Longitude</code>, <code>lat</code>/<code>lon</code> or <code>geox</code>/<code>geoy</code>. For OS Grid References you should have columns titled <code>Easting</code>/<code>Northing</code>. For LSOA-based data you'll need a column titled <code>LSOA11CD</code> or <code>LSOA</code> (interpreted as 2011 codes) and that column will need to contain valid ONS LSOA codes e.g. <em>E01012334</em>.</p>
+			<p>WGS84 and OSGB86 will result in a GeoJSON file containing points. LSOA2011-based data will result in polygons derived from the ONS <a href="https://geoportal.statistics.gov.uk/datasets/lower-layer-super-output-areas-december-2011-boundaries-ew-bgc">Lower Layer Super Output Areas (December 2011) Boundaries EW BGC</a> (<a href="https://www.ons.gov.uk/methodology/geography/licences">OGL</a>). Other columns in the CSV file will be added as properties to each feature in the GeoJSON.</p>
+			<h4 id="privacy">Privacy</h4>
+			<p>If your file contains coordinates (WGC84 or OSGB86) no data is sent from this page. If your file is LSOA-based, this page will have to make a series of requests to the server for the polygons for each LSOA in your dataset. This means the server gets to know which LSOAs are in your data. Please don't add LSOA-based data if this is a problem. If your CSV file contains a huge number of LSOAs your browser may struggle.</p>
+			<h4>Credits</h4>
+			<p>Created by Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2020. MIT Licence. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.</p>
 		</div>
 	</footer>
 </body>
