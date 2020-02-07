@@ -494,23 +494,168 @@ S(document).ready(function(){
 		return this;
 	}
 
+
+	function popuptext(feature){
+		// does this feature have a property named popupContent?
+		popup = '';
+		if(feature.properties){
+			// If this feature has a default popup
+			// Convert "other_tags" e.g "\"ele:msl\"=>\"105.8\",\"ele:source\"=>\"GPS\",\"material\"=>\"stone\""
+			if(feature.properties.other_tags){
+				tags = feature.properties.other_tags.split(/,/);
+				for(var t = 0; t < tags.length; t++){
+					tags[t] = tags[t].replace(/\"/g,"");
+					bits = tags[t].split(/\=\>/);
+					if(bits.length == 2){
+						if(!feature.properties[bits[0]]) feature.properties[bits[0]] = bits[1];
+					}
+				}
+			}
+			if(feature.properties.popup){
+				popup = feature.properties.popup.replace(/\n/g,"<br />");
+			}else{
+				title = '';
+				if(feature.properties.title || feature.properties.name || feature.properties.Name) title = (feature.properties.title || feature.properties.name || feature.properties.Name);
+				//if(!title) title = "Unknown name";
+				if(title) popup += '<h3>'+(title)+'</h3>';
+				var added = 0;
+				for(var f in feature.properties){
+					if(f != "Name" && f!="name" && f!="title" && f!="other_tags" && (typeof feature.properties[f]==="number" || (typeof feature.properties[f]==="string" && feature.properties[f].length > 0))){
+						popup += (added > 0 ? '<br />':'')+'<strong>'+f+':</strong> '+(typeof feature.properties[f]==="string" && feature.properties[f].indexOf("http")==0 ? '<a href="'+feature.properties[f]+'" target="_blank">'+feature.properties[f]+'</a>' : feature.properties[f])+'';
+						added++;
+					}
+				}
+			}
+			// Loop over properties and replace anything
+			for(p in feature.properties){
+				while(popup.indexOf("%"+p+"%") >= 0){
+					popup = popup.replace("%"+p+"%",feature.properties[p] || "?");
+				}
+			}
+			popup = popup.replace(/%type%/g,feature.geometry.type.toLowerCase());
+			// Replace any remaining unescaped parts
+			popup = popup.replace(/%[^\%]+%/g,"?");
+		}
+		return popup;
+	}
+
+	function makeMarker(colour){
+		return L.divIcon({
+			'className': '',
+			'html':	'<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" width="7.0556mm" height="11.571mm" viewBox="0 0 25 41.001" id="svg2" version="1.1"><g id="layer1" transform="translate(1195.4,216.71)"><path style="fill:%COLOUR%;fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" d="M 12.5 0.5 A 12 12 0 0 0 0.5 12.5 A 12 12 0 0 0 1.8047 17.939 L 1.8008 17.939 L 12.5 40.998 L 23.199 17.939 L 23.182 17.939 A 12 12 0 0 0 24.5 12.5 A 12 12 0 0 0 12.5 0.5 z " transform="matrix(1,0,0,1,-1195.4,-216.71)" id="path4147" /><ellipse style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.428;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" id="path4173" cx="-1182.9" cy="-204.47" rx="5.3848" ry="5.0002" /></g></svg>'.replace(/%COLOUR%/,colour||"#000000"),
+			iconSize:	 [25, 41], // size of the icon
+			shadowSize:	 [41, 41], // size of the shadow
+			iconAnchor:	 [12.5, 41], // point of the icon which will correspond to marker's location
+			shadowAnchor: [12.5, 41],	// the same for the shadow
+			popupAnchor:	[0, -41] // point from which the popup should open relative to the iconAnchor
+		});
+	}
+
+	Converter.prototype.addPolygonLayer = function(layerselected,colour){
+
+		// Clear any existing layer
+		if(this.layer){
+			this.layer.clearLayers();
+			this.map.removeLayer(this.layer);
+			delete this.layer;
+			if(this.geojson.features) this.geojson.features = [];
+		}
+
+		var _obj,key,geoattr,added,inverse;
+		_obj = this;
+		inverse = false;
+		added = 0;
+		function getRange(k){
+			var v,i;
+			var min = 1e100;
+			var max = -1e100;
+			for(i = 0; i < _obj.data.rows.length; i++){
+				if(_obj.geojson.features[i].geometry){
+					v = parseFloat(_obj.data.rows[i][k]);
+					if(typeof v==="number" && !isNaN(v)){
+						min = Math.min(min,v);
+						max = Math.max(max,v);
+					}
+				}
+			}
+			if(min == -0) min = 0;
+			return {'min':min,'max':max,'key':_obj.data.fields.name[k],'k':k};
+		}
+		this.layerselector = [];
+		this.layerprops = {'min':0,'max':1,'key':''};
+
+		geoattr = {
+			'style': function(feature){
+				if(feature.geometry.type == "Polygon" || feature.geometry.type == "MultiPolygon"){
+					var val = 0;
+					var k = _obj.layerprops.key;
+					if(typeof feature.properties[k]==="number") val = feature.properties[k];
+					if(typeof val==="number"){
+						var f = (val-_obj.layerprops.min)/(_obj.layerprops.max - _obj.layerprops.min);
+						if(inverse) f = 1-f;
+						v = (f*0.6 + 0.2);
+					}
+					return { "color": colour, "weight": 0.5, "opacity": 0.65, "fillOpacity": v };
+				}else return { "color": colour };	
+			},
+			'onEachFeature': function(feature, layer){
+				var popup =  popuptext(feature,{'this':_obj});
+				if(popup) layer.bindPopup(popup);
+			}
+		};
+		if(this.data[this.geotype]){
+			for(var i = 0; i < this.data[this.geotype].length; i++){
+				feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
+				for(var c = 0; c < this.data.rows[i].length; c++){
+					var n = this.data.fields.title[c];
+					if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
+						v = this.data.rows[i][c];
+						if(parseFloat(v)==v) v = parseFloat(v);
+						feature.properties[n] = v;
+					}
+				}
+				this.geojson.features.push(feature);
+				added++;
+			}
+		}else{
+			this.messages.push({'type':'warning','title':'Geotype ('+this.geotype+') error'});
+		}
+
+		var options = '';
+		var s = -1;
+		if(typeof layerselected==="number") s = layerselected;
+		
+		for(var k = 0, i = 0; k < this.data.fields.format.length; k++){
+			if(this.data.fields.required[k]){
+				if(this.data.fields.format[k]=="integer" || this.data.fields.format[k]=="float"){
+					if(s < 0 && i==0) s = k;
+					this.layerselector.push({'title':this.data.fields.name[k]});
+					options += '<option value="'+k+'"'+(k==s ? ' selected="selected"':'')+'>'+this.data.fields.name[k]+'</option>';
+					i++;
+				}
+			}
+		}
+		this.layerprops = getRange(s);
+		this.layer = L.geoJSON(this.geojson,geoattr);
+
+		if(layerselected < 0){
+
+			this.customSelector._container.innerHTML = '<select>'+options+'</select>';
+			
+			S(this.customSelector._container).css({'display':''}).find('select').off('change').on('change',{me:this,colour:colour},function(e){
+				if(e.data.me.layerselector.length>0){
+					e.data.me.addPolygonLayer(parseInt(e.currentTarget.value),e.data.colour);
+					e.data.me.layer.addTo(e.data.me.map);
+				}
+			});
+		}
+		return added;
+	}
 	Converter.prototype.buildMap = function(){
 
 		var lat = 53.79659;
 		var lon = -1.53385;
 		var d = 0.003;
-
-		function makeMarker(colour){
-			return L.divIcon({
-				'className': '',
-				'html':	'<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" width="7.0556mm" height="11.571mm" viewBox="0 0 25 41.001" id="svg2" version="1.1"><g id="layer1" transform="translate(1195.4,216.71)"><path style="fill:%COLOUR%;fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" d="M 12.5 0.5 A 12 12 0 0 0 0.5 12.5 A 12 12 0 0 0 1.8047 17.939 L 1.8008 17.939 L 12.5 40.998 L 23.199 17.939 L 23.182 17.939 A 12 12 0 0 0 24.5 12.5 A 12 12 0 0 0 12.5 0.5 z " transform="matrix(1,0,0,1,-1195.4,-216.71)" id="path4147" /><ellipse style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.428;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" id="path4173" cx="-1182.9" cy="-204.47" rx="5.3848" ry="5.0002" /></g></svg>'.replace(/%COLOUR%/,colour||"#000000"),
-				iconSize:	 [25, 41], // size of the icon
-				shadowSize:	 [41, 41], // size of the shadow
-				iconAnchor:	 [12.5, 41], // point of the icon which will correspond to marker's location
-				shadowAnchor: [12.5, 41],	// the same for the shadow
-				popupAnchor:	[0, -41] // point from which the popup should open relative to the iconAnchor
-			});
-		}
 
 		if(!this.map){
 			var mapel = S('#map output');
@@ -525,52 +670,29 @@ S(document).ready(function(){
 				subdomains: 'abcd',
 				maxZoom: 19
 			}).addTo(this.map);
+			
+			if(this.customSelector) this.map.removeControl(this.customSelector);
+			
+			L.Control.CustomSelector = L.Control.extend({
+				'options': { 'position': 'topright' },
+				'onAdd': function(map) {
+					var container = L.DomUtil.create('div','mycontrol');
+					var selector = L.DomUtil.create('select','myclass');
+					selector.innerHTML = '';
+					container.appendChild(selector);
+					return container;
+				},
+				onRemove: function(map) {
+					// Nothing to do here
+				}
+			});
+			
+			this.customSelector = new L.Control.CustomSelector();
+			
+			this.map.addControl(this.customSelector);
 		}
 		
 		
-		function popuptext(feature){
-			// does this feature have a property named popupContent?
-			popup = '';
-			if(feature.properties){
-				// If this feature has a default popup
-				// Convert "other_tags" e.g "\"ele:msl\"=>\"105.8\",\"ele:source\"=>\"GPS\",\"material\"=>\"stone\""
-				if(feature.properties.other_tags){
-					tags = feature.properties.other_tags.split(/,/);
-					for(var t = 0; t < tags.length; t++){
-						tags[t] = tags[t].replace(/\"/g,"");
-						bits = tags[t].split(/\=\>/);
-						if(bits.length == 2){
-							if(!feature.properties[bits[0]]) feature.properties[bits[0]] = bits[1];
-						}
-					}
-				}
-				if(feature.properties.popup){
-					popup = feature.properties.popup.replace(/\n/g,"<br />");
-				}else{
-					title = '';
-					if(feature.properties.title || feature.properties.name || feature.properties.Name) title = (feature.properties.title || feature.properties.name || feature.properties.Name);
-					//if(!title) title = "Unknown name";
-					if(title) popup += '<h3>'+(title)+'</h3>';
-					var added = 0;
-					for(var f in feature.properties){
-						if(f != "Name" && f!="name" && f!="title" && f!="other_tags" && (typeof feature.properties[f]==="number" || (typeof feature.properties[f]==="string" && feature.properties[f].length > 0))){
-							popup += (added > 0 ? '<br />':'')+'<strong>'+f+':</strong> '+(typeof feature.properties[f]==="string" && feature.properties[f].indexOf("http")==0 ? '<a href="'+feature.properties[f]+'" target="_blank">'+feature.properties[f]+'</a>' : feature.properties[f])+'';
-							added++;
-						}
-					}
-				}
-				// Loop over properties and replace anything
-				for(p in feature.properties){
-					while(popup.indexOf("%"+p+"%") >= 0){
-						popup = popup.replace("%"+p+"%",feature.properties[p] || "?");
-					}
-				}
-				popup = popup.replace(/%type%/g,feature.geometry.type.toLowerCase());
-				// Replace any remaining unescaped parts
-				popup = popup.replace(/%[^\%]+%/g,"?");
-			}
-			return popup;
-		}
 
 
 		this.geojson = {
@@ -580,83 +702,15 @@ S(document).ready(function(){
 		var colour = '#FF6700';
 		var added = 0;
 
+		S(this.customSelector._container).css({'display':'none'});
+
+	
+
 		if(this.geotype){
-			var _obj,key,geoattr;
-			_obj = this;
-			function getRange(k){
-				var v,i;
-				var min = 1e100;
-				var max = -1e100;
-				for(i = 0; i < _obj.data.rows.length; i++){
-					if(_obj.geojson.features[i].geometry){
-						v = parseFloat(_obj.data.rows[i][k]);
-						if(typeof v==="number" && !isNaN(v)){
-							min = Math.min(min,v);
-							max = Math.max(max,v);
-						}
-					}
-				}
-				return {'min':min,'max':max,'key':_obj.data.fields.name[k]};
-			}
-			this.layerselector = [];
-			this.layerprops = {'min':0,'max':1,'key':''};
-			inverse = false;
-
-			geoattr = {
-				'style': function(feature){
-					if(feature.geometry.type == "Polygon" || feature.geometry.type == "MultiPolygon"){
-						var val = "";
-						var k = "";
-						if(typeof _obj.layerprops.key==="string") k = _obj.layerprops.key;
-						if(typeof feature.properties[k]==="number") val = feature.properties[k];
-						if(typeof val==="number"){
-							var f = (val-_obj.layerprops.min)/(_obj.layerprops.max - _obj.layerprops.min);
-							if(inverse) f = 1-f;
-							v = (f*0.6 + 0.2);
-						}
-						return { "color": colour, "weight": 0.5, "opacity": 0.65, "fillOpacity": v };
-					}else return { "color": colour };
-				},
-				'onEachFeature': function(feature, layer){
-					var popup =  popuptext(feature,{'this':_obj});
-					if(popup) layer.bindPopup(popup);
-				}
-			};
-			if(this.data[this.geotype]){
-				for(var i = 0; i < this.data[this.geotype].length; i++){
-					feature = {"type":"Feature","properties":{},"geometry": this.data[this.geotype][i].geometry };
-					for(var c = 0; c < this.data.rows[i].length; c++){
-						var n = this.data.fields.title[c];
-						if(this.data.fields.required[c]==true && this.data.rows[i][c]!=""){
-							v = this.data.rows[i][c];
-							if(parseFloat(v)==v) v = parseFloat(v);
-							feature.properties[n] = v;
-						}
-					}
-					this.geojson.features.push(feature);
-					added++;
-				}
-			}else{
-				this.messages.push({'type':'warning','title':'Geotype ('+this.geotype+') error'});
-			}
-
-			for(var k = 0; k < this.data.fields.format.length; k++){
-				if(this.data.fields.required[k]){
-					if(this.data.fields.format[k]=="integer" || this.data.fields.format[k]=="float"){
-						this.layerselector.push({'title':this.data.fields.name[k]});
-						if(this.layerselector.length==1) this.layerprops = getRange(k);
-					}
-				}
-			}
-
-
-			if(this.map && this.geojson.features.length > 0){
-				if(this.layer) this.map.removeLayer(this.layer);
-			}
-			this.layer = L.geoJSON(this.geojson,geoattr);
+			added = this.addPolygonLayer(-1,colour);
 
 		}else{
-
+			
 			var customicon = makeMarker('#FF6700');
 
 			// Build marker list
