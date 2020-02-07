@@ -455,12 +455,15 @@ S(document).ready(function(){
 							_obj.data[geotype][i].properties[_obj.data.fields.title[j]] = v;
 						}
 					}
+					S('#progressbar').addClass('done');
 					if(typeof callback==="function") callback.call(_obj);
 				}
 				if(toload == 0){
 					// Immediately call the callback
 					done(p,this.geotype,callback);
 				}else{
+					S('#progressbar').removeClass('done');
+					S('#progressbar .progress-inner').css({'width':'0%'});
 					// Load every geography
 					for(poly in polys){
 						S().ajax(polys[poly],{
@@ -472,6 +475,7 @@ S(document).ready(function(){
 							'callback':callback,
 							'success':function(d,attr){
 								loaded++;
+								S('#progressbar .progress-inner').css({'width':(100*loaded/toload)+'%'});
 								if(!this.geographies[attr.geotype]) this.geographies[attr.geotype] = {};
 								this.geographies[attr.geotype][attr.poly] = d;
 								if(toload==loaded) done(attr.p,attr.geotype,attr.callback);

@@ -212,7 +212,26 @@
 	footer a, footer a:visited { color: inherit; }
 	footer ul { list-style: disc; margin-left: 2em; margin-top: 0.5em; }
 	#loader { text-align:center; }
-	#loader svg { margin: auto; }
+	#loader .holder { padding: 0px; }
+	#loader svg { margin: auto; z-index: 1; position: relative; }
+	#main .seasonal .holder { padding-bottom: 0.75em; }
+	#progressbar {
+		position: relative;
+		width: 100%;
+		height: 0.25em;
+		background-color: #404040;
+	}
+	#progressbar .progress-inner {
+		background-color: #00b9e4;
+		background: linear-gradient(to right,#F9BC26,#FF6700);
+		width: 0%;
+		height: 100%;
+		position: absolute;
+		left: 0px;
+		top: 0px;
+	}
+	#progressbar.done { background: #F9BC26; }
+	#progressbar.done .progress-inner { background: #F9BC26; }
 	</style>
 	<script type="text/javascript" src="resources/stuquery.js"></script>
 	<script type="text/javascript" src="resources/geotools2.js"></script>
@@ -236,6 +255,7 @@
 			<div class="holder">
 				<h1>CSV to GeoJSON</h1><span class="label">ALPHA</span>
 			</div>
+			<div id="progressbar" class="done"><div class="progress-inner"></div></div>
 		</div>
 
 		<form id="validation_form" method="post" enctype="multipart/form-data" action="http://csvlint.io/package" accept-charset="UTF-8">
