@@ -588,10 +588,12 @@ S(document).ready(function(){
 				var min = 1e100;
 				var max = -1e100;
 				for(i = 0; i < _obj.data.rows.length; i++){
-					v = parseFloat(_obj.data.rows[i][k]);
-					if(typeof v==="number" && !isNaN(v)){
-						min = Math.min(min,v);
-						max = Math.max(max,v);
+					if(_obj.geojson.features[i].geometry){
+						v = parseFloat(_obj.data.rows[i][k]);
+						if(typeof v==="number" && !isNaN(v)){
+							min = Math.min(min,v);
+							max = Math.max(max,v);
+						}
 					}
 				}
 				return {'min':min,'max':max,'key':_obj.data.fields.name[k]};
