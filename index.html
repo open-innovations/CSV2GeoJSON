@@ -6,13 +6,13 @@
 	<title>CSV to GeoJSON converter</title>
 	<link rel="StyleSheet" href="resources/style.css" type="text/css" />
 	<link rel="StyleSheet" href="resources/leaflet.css" type="text/css" />
-	<link href="favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
+	<link rel="icon" href="https://open-innovations.org/resources/images/logos/oi-square-14.svg" />
 	<meta name="twitter:card" content="summary">
 	<meta name="twitter:site" content="@ODILeeds">
 	<meta name="twitter:url" property="og:url" content="https://odileeds.github.io/CSV2GeoJSON/">
 	<meta name="twitter:title" property="og:title" content="CSV to GeoJSON converter">
 	<meta name="twitter:description" property="og:description" content="Convert a CSV file with simple geography into a GeoJSON point file">
-	<meta name="twitter:image" property="og:image" content="https://odileeds.org/resources/images/odileeds.png">
+	<meta name="twitter:image" property="og:image" content="https://open-innovations.org/resources/images/logos/oi-square-14.png">
 	<style>
 	#map output, textarea { 
 		height: 500px;
@@ -240,12 +240,10 @@
 	<script type="text/javascript" src="resources/leaflet.markercluster-src.js"></script>
 </head>
 <body>
-	<header class="b1-bg">
-		<div class="b1-bg glory">
-			<div class="glory-opacity">
-				<div class="holder">
-					<a href="http://odileeds.org/"><img alt="ODI Leeds" src="resources/odileeds.svg" title="ODI Leeds"></a>
-				</div>
+	<header>
+		<div class="b1-bg padded">
+			<div class="holder" style="text-align:center;">
+				<a href="https://open-innovations.org/" aria-label="Open Innovations"><img src="https://open-innovations.org/resources/images/logos/oi-square-14.svg" alt="Open Innovations" width="100px" height="100px" /></a>
 			</div>
 		</div>
 	</header>
@@ -373,13 +371,13 @@
 			<h3 id="privacy">Privacy</h3>
 			<p>If your file contains coordinates (WGC84 or OSGB86) no data is sent from this page. If your file is area-based - e.g. LSOA, Ward, Constituency, Local Authority - this page will have to make a series of requests to the server for the polygons for each area in your dataset. This means the server gets to know which areas are in your data. Please don't add area-based data if this is a problem. If your CSV file contains a huge number of areas your browser may struggle.</p>
 			<h3>Credits</h3>
-			<p>Created by Stuart Lowe, <a href="http://odileeds.org/projects/">ODI Leeds</a> 2020. MIT Licence. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.</p>
+			<p>Created by Stuart Lowe, <a href="http://open-innovations.org/projects/">Open Innovations</a> 2020. MIT Licence. Find <a href="https://github.com/odileeds/CSV2GeoJSON">the code on Github</a>.</p>
 		</div>
 	</footer>
 
-	<script src="https://odileeds.org/resources/odi.log.js"></script>
+	<script src="https://open-innovations.org/resources/oi.log.js"></script>
 	<script>
-	ODI.log.setup({'id':'odileeds','target':['odileeds.github.io']}).add('action=view');
+	OI.log.setup({'id':'open-innovations','target':['odileeds.github.io']}).add('action=view');
 	</script>
 </body>
 </html>
