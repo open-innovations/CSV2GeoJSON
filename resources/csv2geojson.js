@@ -6,7 +6,7 @@ S(document).ready(function(){
 
 	function receiveMessage(event) {
 		console.log('Received message from '+event.origin);
-		if(event.origin !== "https://odileeds.github.io") return;
+		if(event.origin !== "https://open-innovations.github.io") return;
 
 		convert.reset();
 
@@ -445,7 +445,7 @@ S(document).ready(function(){
 				var i,poly;
 				for(i = 0; i < this.data.rows.length; i++){
 					poly = this.data.rows[i][p];
-					if(!this.geographies[this.geotype][poly]) polys[poly] = 'https://odileeds.github.io/geography-bits/data/'+this.geotype+'/'+poly+'.geojsonl';
+					if(!this.geographies[this.geotype][poly]) polys[poly] = 'https://open-innovations.github.io/geography-bits/data/'+this.geotype+'/'+poly+'.geojsonl';
 				}
 				var toload = 0;
 				var loaded = 0;
