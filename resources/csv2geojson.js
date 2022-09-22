@@ -220,7 +220,7 @@ S(document).ready(function(){
 		//this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"non-positive integer","ref":"http://www.w3.org/2001/XMLSchema#nonPositiveInteger"}, {"label":"positive integer","ref":"http://www.w3.org/2001/XMLSchema#positiveInteger"}, {"label":"non-negative integer","ref":"http://www.w3.org/2001/XMLSchema#nonNegativeInteger"}, {"label":"negative integer","ref":"http://www.w3.org/2001/XMLSchema#negativeInteger"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"date & time","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"year & month","ref":"http://www.w3.org/2001/XMLSchema#gYearMonth"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 		this.datatypes = [{"label":"string","ref":"http://www.w3.org/2001/XMLSchema#string"},{"label":"integer","ref":"http://www.w3.org/2001/XMLSchema#int"},{"label":"float","ref":"http://www.w3.org/2001/XMLSchema#float"},{"label":"double","ref":"http://www.w3.org/2001/XMLSchema#double"},{"label":"URL","ref":"http://www.w3.org/2001/XMLSchema#anyURI"},{"label":"boolean","ref":"http://www.w3.org/2001/XMLSchema#boolean"},{"label":"date","ref":"http://www.w3.org/2001/XMLSchema#date"}, {"label":"datetime","ref":"http://www.w3.org/2001/XMLSchema#dateTime"},{"label":"year","ref":"http://www.w3.org/2001/XMLSchema#gYear"},{"label":"time","ref":"http://www.w3.org/2001/XMLSchema#time "}];
 
-		this.geographies = {'LSOA11CD':{},'LSOA01CD':{},'MSOA11CD':{},'WD19CD':{},'WD20CD':{},'WD21CD':{},'PCON17CD':{},'LAD19CD':{},'LAD20CD':{},'LAD21CD':{},'CAUTH21CD':{}};
+		this.geographies = {'LSOA21CD':{},'LSOA11CD':{},'LSOA01CD':{},'MSOA21CD':{},'MSOA11CD':{},'WD19CD':{},'WD20CD':{},'WD21CD':{},'PCON17CD':{},'LAD19CD':{},'LAD20CD':{},'LAD21CD':{},'CAUTH21CD':{}};
 		this.messages = [];
 
 		// If we provided a filename we load that now
@@ -408,13 +408,19 @@ S(document).ready(function(){
 			
 			this.geotype = "";
 			for(var c = 0; c < this.data.fields.title.length; c++){
-				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA11CD")){
+				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA21CD")){
+					p = c;
+					this.geotype = "LSOA11CD";
+				}else if(p < 0 && this.data.fields.title[c].toUpperCase() == "LSOA11CD"){
 					p = c;
 					this.geotype = "LSOA11CD";
 				}else if(p < 0 && this.data.fields.title[c].toUpperCase() == "LSOA01CD"){
 					p = c;
 					this.geotype = "LSOA01CD";
-				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "MSOA" || this.data.fields.title[c].toUpperCase() == "MSOA11CD")){
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "MSOA" || this.data.fields.title[c].toUpperCase() == "MSOA21CD")){
+					p = c;
+					this.geotype = "MSOA21CD";
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "MSOA11CD")){
 					p = c;
 					this.geotype = "MSOA11CD";
 				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "WARD" || this.data.fields.title[c].toUpperCase() == "WD21CD")){
