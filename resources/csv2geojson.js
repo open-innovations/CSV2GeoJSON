@@ -426,6 +426,7 @@ S(document).ready(function(){
 				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "WARD" || this.data.fields.title[c].toUpperCase() == "WD21CD")){
 					p = c;
 					this.geotype = "WD21CD";
+					//this.patterns = [/^E05[0-9]{6}$/]
 				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "WD20CD")){
 					p = c;
 					this.geotype = "WD20CD";
@@ -664,6 +665,14 @@ S(document).ready(function(){
 			}
 		}
 		this.layerprops = getRange(s);
+		var bad = 0;
+		for(var i = this.geojson.features.length-1; i >= 0 ; i--){
+			if(!this.geojson.features[i].geometry){
+				bad++;
+				this.geojson.features.splice(i,1);
+			}
+		}
+		if(bad > 0) this.messages.push({'type':'warning','title':'Not including '+bad+' features in the final output because we couldn\'t identify them (see above).'});
 		this.layer = L.geoJSON(this.geojson,geoattr);
 
 		if(layerselected < 0){
