@@ -445,7 +445,10 @@ S(document).ready(function(){
 				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "WD19CD")){
 					p = c;
 					this.geotype = "WD19CD";
-				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LOCAL AUTHORITY" || this.data.fields.title[c].toUpperCase() == "LAD23CD")){
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LOCAL AUTHORITY" || this.data.fields.title[c].toUpperCase() == "LAD24CD")){
+					p = c;
+					this.geotype = "LAD24CD";
+				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LAD23CD")){
 					p = c;
 					this.geotype = "LAD23CD";
 				}else if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LAD21CD")){
