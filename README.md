@@ -4,8 +4,8 @@ Convert CSV files containing columns with defined geographies into GeoJSON files
 
 * latitude/longitude (WGS84) - two columns titled `Latitude`/`Longitude`, `lat`/`lon` or `geox`/`geoy`.
 * OS Grid References - two columns titled `Easting`/`Northing`.
-* LSOA - a column titled `LSOA11CD`, `LSOA01CD` or `LSOA` (interpreted as 2011 codes) and that column will need to contain valid ONS LSOA codes e.g. E01012334.
-* MSOA - a column titled `MSOA11CD` or `MSOA` (interpreted as 2011 codes) and that column will need to contain valid ONS MSOA codes e.g. E02002273.
+* LSOA - a column titled `LSOA21CD`, `LSOA11CD`, `LSOA01CD` or `LSOA` (interpreted as 2011 codes) and that column will need to contain valid ONS LSOA codes e.g. E01012334.
+* MSOA - a column titled `MSOA21CD`, `MSOA11CD` or `MSOA` (interpreted as 2011 codes) and that column will need to contain valid ONS MSOA codes e.g. E02002273.
 * Ward - a column titled `WD20CD`, `WD19CD` or `Ward` (interpreted as 2020 wards) and that column will need to contain valid ONS 2020 Ward codes e.g. E05000026.
 * Constituency - a column titled `PCON17CD` or Constituency (interpreted as 2017 Westminster Constituencies) and that column will need to contain valid ONS 2017 Constituency codes e.g. E14000530.
 * Local Authority Districts - a column titled `LAD20CD`, `LAD19CD` or Local Authority (interpreted as 2020 Local Authority Boundaries) and that column will need to contain valid ONS 2020 Local Authority codes e.g. E06000001.

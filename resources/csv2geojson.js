@@ -410,7 +410,7 @@ S(document).ready(function(){
 			for(var c = 0; c < this.data.fields.title.length; c++){
 				if(p < 0 && (this.data.fields.title[c].toUpperCase() == "LSOA" || this.data.fields.title[c].toUpperCase() == "LSOA21CD")){
 					p = c;
-					this.geotype = "LSOA11CD";
+					this.geotype = "LSOA21CD";
 				}else if(p < 0 && this.data.fields.title[c].toUpperCase() == "LSOA11CD"){
 					p = c;
 					this.geotype = "LSOA11CD";
